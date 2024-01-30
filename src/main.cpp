@@ -84,8 +84,6 @@ void loop()
   {
     // Serial.printf("%5.1lf %3.1lf \n",Tau,Te);
 
-    //Serial.printf("Angle projeté : %5.1lf  |  Angle Gyro : %5.1lf  |  Avec filtre : %5.1lf\n", angleAccel, angleGyro, angleFiltre);
-
     FlagCalcul = 0;
   }
 
