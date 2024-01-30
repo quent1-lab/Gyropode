@@ -19,7 +19,7 @@ bool mpu_ok = true;
 
 char FlagCalcul = 0;
 float Te = 10;    // période d'échantillonage en ms
-float Tau = 50; // constante de temps du filtre en ms
+float Tau = 250; // constante de temps du filtre en ms
 
 // coefficient du filtre
 float A, B;
