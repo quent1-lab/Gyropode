@@ -19,16 +19,16 @@ bool mpu_ok = true;
 
 char FlagCalcul = 0;
 float Te = 10;    // période d'échantillonage en ms
-float Tau = 1000; // constante de temps du filtre en ms
+float Tau = 250; // constante de temps du filtre en ms
 
 // coefficient du filtre
 float A, B;
-// angle projeté
-float angleAccel;
-// angle gyro
-float angleGyro;
+
+// angle projeté et gyro
+float thetaG, thetaR;
+
 // angle filtre
-float angleFiltre;
+float thetaGF, thetaRF, thetaFC;
 
 // ----------------------- Déclaration des fonctions -----------------------
 
@@ -42,6 +42,19 @@ void controle(void *parameters)
   {
     if(!mpu_ok) continue;
     // Acquisition
+    mpu.getEvent(&a, &g, &temp);
+
+    // Calcul des angles
+    thetaG = atan2(a.acceleration.y, a.acceleration.x); //Angle projeté
+    thetaR = -g.gyro.z * Tau / 1000;
+
+    // Appliquer le filtre passe-bas
+    thetaGF = A * (thetaG + B * thetaGF);
+    // Appliquer le filtre passe-haut sur l'angle gyro
+    thetaRF = A * (thetaR + B * thetaRF);
+
+    // Filtre complémentaire
+    thetaFC = thetaGF + thetaRF;
 
     FlagCalcul = 1;
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(Te));
