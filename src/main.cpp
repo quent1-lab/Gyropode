@@ -100,23 +100,6 @@ void loop()
     FlagCalcul = 0;
   }
 
-  moteurs.setVitesses(150, -100);
+  moteurs.setVitesses(250, 250);
   moteurs.updateMoteurs();
-
-  delay(1000);
-
-  moteurs.setVitesses(0, 0);
-  moteurs.updateMoteurs();
-
-  delay(500);
-
-  moteurs.setVitesses(-150, 100);
-  moteurs.updateMoteurs();
-
-  delay(1000);
-
-  moteurs.setVitesses(0, 0);
-  moteurs.updateMoteurs();
-
-  delay(500);
 }

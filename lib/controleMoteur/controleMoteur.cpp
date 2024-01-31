@@ -7,7 +7,7 @@ ControleMoteur::ControleMoteur(int in1, int in2, int in3, int in4)
     IN3 = in3;
     IN4 = in4;
 
-    frequence = 5000;
+    frequence = 20000;
     resoltion = 8;
 
     pinMode(IN1, OUTPUT);
@@ -37,8 +37,13 @@ void ControleMoteur::updateMoteurs()
     int pwm1 = map(abs(vitesseMoteur1), 0, 255, 0, 255);
     int pwm2 = map(abs(vitesseMoteur2), 0, 255, 0, 255);
 
-    ledcWrite(1, vitesseMoteur1 > 0 ? pwm1 : 0);
-    ledcWrite(2, vitesseMoteur1 < 0 ? pwm1 : 0);
-    ledcWrite(3, vitesseMoteur2 > 0 ? pwm2 : 0);
-    ledcWrite(4, vitesseMoteur2 < 0 ? pwm2 : 0);
+   /*ledcWrite(1, 250);
+    ledcWrite(2, 5);
+    ledcWrite(3, 250);
+    ledcWrite(4, 5);*/
+    //Commande unipolaire des moteurs en PWM
+    ledcWrite(1, -vitesseMoteur1 > 0 ? pwm1 : 255-pwm1);
+    ledcWrite(2, -vitesseMoteur1 < 0 ? pwm1 : 255-pwm1);
+    ledcWrite(3, vitesseMoteur2 > 0 ? pwm2 : 255-pwm2);
+    ledcWrite(4, vitesseMoteur2 < 0 ? pwm2 : 255-pwm2);
 }
