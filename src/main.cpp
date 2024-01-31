@@ -7,7 +7,7 @@
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
-ControleMoteur moteurs(27, 25, 33, 32);  // Remplacez les numéros de broches selon votre configuration
+ControleMoteur moteurs(27, 25, 33, 32); // Remplacez les numéros de broches selon votre configuration
 int vitesseMoteurG = 0;
 int vitesseMoteurD = 0;
 
@@ -18,7 +18,7 @@ sensors_event_t a, g, temp;
 bool mpu_ok = true;
 
 char FlagCalcul = 0;
-float Te = 10;    // période d'échantillonage en ms
+float Te = 10;   // période d'échantillonage en ms
 float Tau = 250; // constante de temps du filtre en ms
 
 // coefficient du filtre
@@ -40,23 +40,25 @@ void controle(void *parameters)
   xLastWakeTime = xTaskGetTickCount();
   while (1)
   {
-    if(!mpu_ok) continue;
-    // Acquisition
-    mpu.getEvent(&a, &g, &temp);
+    if (mpu_ok)
+    {
+      // Acquisition
+      mpu.getEvent(&a, &g, &temp);
 
-    // Calcul des angles
-    thetaG = atan2(a.acceleration.y, a.acceleration.x); //Angle projeté
-    thetaR = -g.gyro.z * Tau / 1000;
+      // Calcul des angles
+      thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
+      thetaR = -g.gyro.z * Tau / 1000;
 
-    // Appliquer le filtre passe-bas
-    thetaGF = A * (thetaG + B * thetaGF);
-    // Appliquer le filtre passe-haut sur l'angle gyro
-    thetaRF = A * (thetaR + B * thetaRF);
+      // Appliquer le filtre passe-bas
+      thetaGF = A * (thetaG + B * thetaGF);
+      // Appliquer le filtre passe-haut sur l'angle gyro
+      thetaRF = A * (thetaR + B * thetaRF);
 
-    // Filtre complémentaire
-    thetaFC = thetaGF + thetaRF;
-
+      // Filtre complémentaire
+      thetaFC = thetaGF + thetaRF;
+    }
     FlagCalcul = 1;
+
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(Te));
   }
 }
@@ -75,7 +77,11 @@ void setup()
     Serial.println("Failed to find MPU6050 chip");
     mpu_ok = false;
     delay(10);
-  }else Serial.println("MPU6050 Found!");
+  }
+  else
+  {
+    Serial.println("MPU6050 Found!");
+  }
 
   xTaskCreate(
       controle,   // nom de la fonction
@@ -100,6 +106,22 @@ void loop()
     FlagCalcul = 0;
   }
 
-  moteurs.setVitesses(250, 250);
+  Serial.println("Test moteurs marche avant");
+  moteurs.setVitesses(150, -100);
+  moteurs.updateMoteurs();
+
+  delay(1000);
+
+  moteurs.setVitesses(0, 0);
+  moteurs.updateMoteurs();
+
+  delay(500);
+  Serial.println("Test moteurs marche arrière");
+  moteurs.setVitesses(-150, 100);
+  moteurs.updateMoteurs();
+
+  delay(1000);
+
+  moteurs.setVitesses(0, 0);
   moteurs.updateMoteurs();
 }
