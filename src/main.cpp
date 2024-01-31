@@ -87,6 +87,7 @@ void loop()
     FlagCalcul = 0;
   }
 
+  Serial.println("Test moteurs marche avant");
   moteurs.setVitesses(150, -100);
   moteurs.updateMoteurs();
 
@@ -96,7 +97,7 @@ void loop()
   moteurs.updateMoteurs();
 
   delay(500);
-
+  Serial.println("Test moteurs marche arrière");
   moteurs.setVitesses(-150, 100);
   moteurs.updateMoteurs();
 
