@@ -28,14 +28,15 @@ ControleMoteur::ControleMoteur(int in1, int in2, int in3, int in4)
 
 void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
 {
-    this->vitesseMoteur1 = constrain(vitesseMoteur1, -255, 255);
-    this->vitesseMoteur2 = constrain(vitesseMoteur2, -255, 255);
+    // La vitesse des moteurs est comprise entre -100 et 100 (pourcentage de la vitesse maximale)
+    this->vitesseMoteur1 = constrain(vitesseMoteur1, -100, 100);
+    this->vitesseMoteur2 = constrain(vitesseMoteur2, -100, 100);
 }
 
 void ControleMoteur::updateMoteurs()
 {
-    int pwm1 = map(abs(vitesseMoteur1), 0, 255, 0, 255);
-    int pwm2 = map(abs(vitesseMoteur2), 0, 255, 0, 255);
+    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 170, 252);
+    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 170, 252);
 
    /*ledcWrite(1, 250);
     ledcWrite(2, 5);

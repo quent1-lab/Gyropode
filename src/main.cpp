@@ -57,6 +57,8 @@ void controle(void *parameters)
       // Filtre complémentaire
       thetaFC = thetaGF + thetaRF;
     }
+
+    moteurs.updateMoteurs();
     FlagCalcul = 1;
 
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(Te));
