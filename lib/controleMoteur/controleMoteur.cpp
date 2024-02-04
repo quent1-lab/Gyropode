@@ -35,13 +35,9 @@ void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
 
 void ControleMoteur::updateMoteurs()
 {
-    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 170, 252);
-    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 170, 252);
+    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 170, 252); // Conversion de la vitesse en PWM (valeur à afiner)
+    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 170, 252); // Conversion de la vitesse en PWM (valeur à afiner)
 
-   /*ledcWrite(1, 250);
-    ledcWrite(2, 5);
-    ledcWrite(3, 250);
-    ledcWrite(4, 5);*/
     //Commande unipolaire des moteurs en PWM
     ledcWrite(1, -vitesseMoteur1 > 0 ? pwm1 : 255-pwm1);
     ledcWrite(2, -vitesseMoteur1 < 0 ? pwm1 : 255-pwm1);
