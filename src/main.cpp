@@ -35,17 +35,21 @@ float thetaGF, thetaRF, thetaFC;
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-const float kp = 1.0;  // Gain proportionnel
-const float ki = 0.1;  // Gain intégral
-const float kd = 0.01; // Gain dérivé
+const float kp = 700.0;  // Gain proportionnel
+const float ki = 0;  // Gain intégral
+const float kd = 1000.0; // Gain dérivé
 
 // Variables globales pour le PID
+float terme_prop = 0.0;
+float terme_deriv = 0.0;
 float erreur_cumulee = 0.0;
 float erreur_precedente = 0.0;
 float commande = 0.0;
 float erreur = 0.0;
 
 // ----------------------- Déclaration des fonctions -----------------------
+
+void asservissementPosition(float consigne, float mesure);
 
 // --------------------- Fonction de calcul des angles ---------------------
 
@@ -72,6 +76,8 @@ void controle(void *parameters)
       // Filtre complémentaire
       thetaFC = thetaGF + thetaRF;
     }
+
+    asservissementPosition(0, thetaFC);
 
     moteurs.updateMoteurs();
     FlagCalcul = 1;
@@ -115,52 +121,34 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    // Serial.printf("%5.1lf %3.1lf \n",Tau,Te);
+    //Serial.printf("%5.1lf %3.1lf \n",Tau,Te);
+
+    Serial.print("erreur : ");
+    Serial.print(erreur);
+    Serial.print(" | terme_prop : ");
+    Serial.print(terme_prop);
+    Serial.print(" | terme_deriv : ");
+    Serial.print(terme_deriv);
+    Serial.print(" | commande : ");
+    Serial.println(commande);
 
     FlagCalcul = 0;
   }
-
-  Serial.println("Test moteurs marche avant");
-  moteurs.setVitesses(150, -100);
-  moteurs.updateMoteurs();
-
-  delay(1000);
-
-  moteurs.setVitesses(0, 0);
-  moteurs.updateMoteurs();
-
-  delay(500);
-  Serial.println("Test moteurs marche arrière");
-  moteurs.setVitesses(-150, 100);
-  moteurs.updateMoteurs();
-
-  delay(1000);
-
-  moteurs.setVitesses(0, 0);
-  moteurs.updateMoteurs();
-}
-
-void debout()
-{
-  // Cette fonction permet de mettre le robot debout
-  // Grâce à un asservissement en position
-
-  asservissementPosition(0, thetaFC);
 
 }
 
 // Fonction de régulation PID en position
 void asservissementPosition(float consigne, float mesure) {
     // Calcul de l'erreur
-    erreur = consigne - mesure;
+    erreur = (DEG_TO_RAD * consigne) - mesure;
 
     // Calcul des termes PID
-    float terme_prop = kp * erreur;
+    terme_prop = kp * erreur;
     erreur_cumulee += ki * erreur;
-    float terme_deriv = kd * (erreur - erreur_precedente);
+    terme_deriv = kd * (erreur - erreur_precedente);
 
     // Calcul de la commande finale
-    commande = terme_prop + erreur_cumulee + terme_deriv;
+    commande = terme_prop + terme_deriv + erreur_cumulee;
 
     // Limiter la commande pour éviter des valeurs excessives
     // (en fonction des caractéristiques de votre gyropode)
@@ -172,7 +160,7 @@ void asservissementPosition(float consigne, float mesure) {
 
     // Appliquer la commande aux moteurs du gyropode
     // (à adapter en fonction de votre configuration matérielle)
-    moteurs.setVitesses(commande, -commande);
+    moteurs.setVitesses(commande, commande);
 
     // Mettre à jour l'erreur précédente pour le terme dérivé
     erreur_precedente = erreur;
