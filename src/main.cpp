@@ -35,9 +35,9 @@ float thetaGF, thetaRF, thetaFC;
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-const float kp = 700.0;  // Gain proportionnel
-const float ki = 0;      // Gain intégral
-const float kd = 1000.0; // Gain dérivé
+float kp = 700.0;  // Gain proportionnel
+float ki = 0;      // Gain intégral
+float kd = 1000.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
@@ -141,16 +141,13 @@ void reception(char ch)
       valeur = chaine.substring(index + 1, length);
     }
 
-    if (commande == "Tau")
+    if (commande == "kp")
     {
-      Tau = valeur.toFloat();
-      // calcul coeff filtre
-      A = 1 / (1 + Tau / Te);
-      B = Tau / Te * A;
+      kp = valeur.toFloat();
     }
-    if (commande == "Te")
+    if (commande == "kd")
     {
-      Te = valeur.toInt();
+      kd = valeur.toInt();
     }
 
     chaine = "";
