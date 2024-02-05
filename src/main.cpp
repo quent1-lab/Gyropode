@@ -35,9 +35,9 @@ float thetaGF, thetaRF, thetaFC;
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 700.0;  // Gain proportionnel
+float kp = 500.0;  // Gain proportionnel
 float ki = 0;      // Gain intégral
-float kd = 1000.0; // Gain dérivé
+float kd = 2000.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
