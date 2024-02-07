@@ -21,6 +21,7 @@ const int pinEncD_A = 16;
 const int pinEncD_B = 4;
 const int pinEncG_A = 34;
 const int pinEncG_B = 35;
+const int pinBatterie = 39;
 
 // ------------------------- Déclaration des variables du mpu ------------------------
 
@@ -41,14 +42,14 @@ float thetaG, thetaR;
 // angle filtre
 float thetaGF, thetaRF, thetaFC;
 
-float theta0 = 0.04; // angle d'équilibre
+float theta0 = 0.0; // angle d'équilibre
 
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 10.0;  // Gain proportionnel
+float kp = 400.0;  // Gain proportionnel
 float ki = 0;     // Gain intégral
-float kd = 100.0; // Gain dérivé
+float kd = 60.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
@@ -106,6 +107,7 @@ void setup()
 
   pinMode(pinLed, OUTPUT);
   pinMode(pinBuzzer, OUTPUT);
+  pinMode(pinBatterie, INPUT);
 
   // Try to initialize!
   if (!mpu.begin())
@@ -132,6 +134,7 @@ void setup()
   A = 1 / (1 + Tau / Te);
   B = Tau / Te;
 
+  moteurs.setAlphaFrottement(0.25);
   buzzer(1000, 100);
 }
 
@@ -167,6 +170,19 @@ void reception(char ch)
     {
       kd = valeur.toInt();
     }
+    if (commande == "ki")
+    {
+      ki = valeur.toInt();
+    }
+    if (commande == "af")
+    {
+      moteurs.setAlphaFrottement(valeur.toFloat());
+    }
+    if (commande == "th")
+    {
+      theta0 = valeur.toFloat();
+    }
+
 
     chaine = "";
   }
