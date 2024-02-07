@@ -7,8 +7,9 @@ class Melodie
 {
 public:
     Melodie(int pinBuzzer);
-    void jouerMelodie();
+    void jouerMelodie(int melodie[], int duree[], int tailleMelodie);
     void stopperMelodie();
+    void choisirMelodie(int nb_melodie);
 
 private:
     int pinBuzzer;

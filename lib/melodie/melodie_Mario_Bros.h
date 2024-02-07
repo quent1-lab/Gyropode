@@ -91,7 +91,7 @@
 #define REST 0
 
 // Define the melody
-int melody[] = {
+int melodie_Mario_Bros[] = {
   NOTE_E7, NOTE_E7, REST, NOTE_E7,
   REST, NOTE_C7, NOTE_E7, REST,
   NOTE_G7, REST, REST,  REST,
@@ -119,7 +119,7 @@ int melody[] = {
 };
 
 // Define the note durations: 4 = quarter note, 8 = eighth note, etc.
-int noteDurations[] = {
+int duree_Mario_Bros[] = {
   12, 12, 12, 12,
   12, 12, 12, 12,
   12, 12, 12, 12,
@@ -140,3 +140,5 @@ int noteDurations[] = {
   12, 12, 12, 12,
   12, 12, 12, 12
 };
+
+int taille_Mario_Bros = 63;

@@ -4,8 +4,12 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <controleMoteur.h>
+#include <freertos/FreeRTOS.h>
+#include <melodie.h> 
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
+
+Melodie melodie(26);
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -135,7 +139,7 @@ void setup()
   B = Tau / Te;
 
   moteurs.setAlphaFrottement(0.25);
-  buzzer(1000, 100);
+  melodie.choisirMelodie(1);
 }
 
 void reception(char ch)
