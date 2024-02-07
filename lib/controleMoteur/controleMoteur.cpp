@@ -15,15 +15,15 @@ ControleMoteur::ControleMoteur(int in1, int in2, int in3, int in4)
     pinMode(IN3, OUTPUT);
     pinMode(IN4, OUTPUT);
 
-    ledcSetup(1, frequence, resoltion); // Canal 1
-    ledcSetup(2, frequence, resoltion); // Canal 2
-    ledcSetup(3, frequence, resoltion); // Canal 3
-    ledcSetup(4, frequence, resoltion); // Canal 4
+    ledcSetup(2, frequence, resoltion); // Canal 1
+    ledcSetup(3, frequence, resoltion); // Canal 2
+    ledcSetup(4, frequence, resoltion); // Canal 3
+    ledcSetup(5, frequence, resoltion); // Canal 4
 
-    ledcAttachPin(IN1, 1); // Attache le canal 1 à la broche IN1
-    ledcAttachPin(IN2, 2); // Attache le canal 2 à la broche IN2
-    ledcAttachPin(IN3, 3); // Attache le canal 3 à la broche IN3
-    ledcAttachPin(IN4, 4); // Attache le canal 4 à la broche IN4
+    ledcAttachPin(IN1, 2); // Attache le canal 1 à la broche IN1
+    ledcAttachPin(IN2, 3); // Attache le canal 2 à la broche IN2
+    ledcAttachPin(IN3, 4); // Attache le canal 3 à la broche IN3
+    ledcAttachPin(IN4, 5); // Attache le canal 4 à la broche IN4
 }
 
 void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
@@ -35,8 +35,8 @@ void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
 
 void ControleMoteur::updateMoteurs()
 {
-    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 127, 250); // Conversion de la vitesse en PWM (valeur à afiner)
-    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 127, 250); // Conversion de la vitesse en PWM (valeur à afiner)
+    int pwm1 = map(abs(vitesseMoteur1), 0, 100, (127 + (255*alphaFrottement)), 250); // Conversion de la vitesse en PWM (valeur à afiner)
+    int pwm2 = map(abs(vitesseMoteur2), 0, 100, (127 + (255*alphaFrottement)), 250); // Conversion de la vitesse en PWM (valeur à afiner)
 
     if (vitesseMoteur1 <= 3 && vitesseMoteur1 >= -3)
     {
@@ -48,8 +48,13 @@ void ControleMoteur::updateMoteurs()
     }
 
     //Commande unipolaire des moteurs en PWM
-    ledcWrite(1, -vitesseMoteur1 > 0 ? pwm1 : 255-pwm1);
-    ledcWrite(2, -vitesseMoteur1 < 0 ? pwm1 : 255-pwm1);
-    ledcWrite(3, vitesseMoteur2 > 0 ? pwm2 : 255-pwm2);
-    ledcWrite(4, vitesseMoteur2 < 0 ? pwm2 : 255-pwm2);
+    ledcWrite(2, -vitesseMoteur1 > 0 ? pwm1 : 255-pwm1);
+    ledcWrite(3, -vitesseMoteur1 < 0 ? pwm1 : 255-pwm1);
+    ledcWrite(4, vitesseMoteur2 > 0 ? pwm2 : 255-pwm2);
+    ledcWrite(5, vitesseMoteur2 < 0 ? pwm2 : 255-pwm2);
+}
+
+void ControleMoteur::setAlphaFrottement(float alphaFrottement)
+{
+    this->alphaFrottement = constrain(alphaFrottement, 0, 1);
 }

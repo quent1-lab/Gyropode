@@ -41,11 +41,13 @@ float thetaG, thetaR;
 // angle filtre
 float thetaGF, thetaRF, thetaFC;
 
+float theta0 = 0.04; // angle d'équilibre
+
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
 float kp = 10.0;  // Gain proportionnel
-float ki = 0;      // Gain intégral
+float ki = 0;     // Gain intégral
 float kd = 100.0; // Gain dérivé
 
 // Variables globales pour le PID
@@ -159,7 +161,6 @@ void reception(char ch)
 
     if (commande == "kp")
     {
-      digitalWrite(pinLed, HIGH);
       kp = valeur.toFloat();
     }
     if (commande == "kd")
@@ -174,7 +175,6 @@ void reception(char ch)
     chaine += ch;
   }
 }
-
 
 void loop()
 {
@@ -199,7 +199,7 @@ void loop()
 void asservissementPosition(float consigne, float mesure)
 {
   // Calcul de l'erreur
-  erreur = consigne - mesure;
+  erreur = (consigne + theta0) - mesure;
 
   // Calcul des termes PID
   terme_prop = kp * erreur;
@@ -211,7 +211,6 @@ void asservissementPosition(float consigne, float mesure)
 
   // Limiter la commande pour éviter des valeurs excessives
   commande = constrain(commande, -MAX_COMMANDE, MAX_COMMANDE);
-  commande = 0;
 
   // Appliquer la commande aux moteurs du gyropode
   // (à adapter en fonction de votre configuration matérielle)
