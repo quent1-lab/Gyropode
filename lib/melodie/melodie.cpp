@@ -1,5 +1,6 @@
 #include "melodie.h"
 #include "melodie_Mario_Bros.h"
+#include "melodie_StarWars.h"
 
 Melodie::Melodie(int pinBuzzer)
 {
@@ -30,6 +31,9 @@ void Melodie::choisirMelodie(int nb_melodie)
     {
     case 1:
         jouerMelodie(melodie_Mario_Bros, duree_Mario_Bros, taille_Mario_Bros);
+        break;
+    case 2:
+        jouerMelodie(melodie_StarWars, duree_StarWars, taille_StarWars);
         break;
     default:
         break;

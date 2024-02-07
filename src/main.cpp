@@ -139,7 +139,7 @@ void setup()
   B = Tau / Te;
 
   moteurs.setAlphaFrottement(0.25);
-  melodie.choisirMelodie(1);
+  //melodie.choisirMelodie(1);
 }
 
 void reception(char ch)
