@@ -35,14 +35,14 @@ void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
 
 void ControleMoteur::updateMoteurs()
 {
-    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 190, 252); // Conversion de la vitesse en PWM (valeur à afiner)
-    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 190, 252); // Conversion de la vitesse en PWM (valeur à afiner)
+    int pwm1 = map(abs(vitesseMoteur1), 0, 100, 127, 250); // Conversion de la vitesse en PWM (valeur à afiner)
+    int pwm2 = map(abs(vitesseMoteur2), 0, 100, 127, 250); // Conversion de la vitesse en PWM (valeur à afiner)
 
-    if (vitesseMoteur1 <= 5 && vitesseMoteur1 >= -5)
+    if (vitesseMoteur1 <= 3 && vitesseMoteur1 >= -3)
     {
         pwm1 = 127;
     }
-    if (vitesseMoteur2 <= 5 && vitesseMoteur2 >= -5)
+    if (vitesseMoteur2 <= 3 && vitesseMoteur2 >= -3)
     {
         pwm2 = 127;
     }

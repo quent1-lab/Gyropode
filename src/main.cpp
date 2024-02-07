@@ -13,6 +13,15 @@ ControleMoteur moteurs(27, 25, 33, 32); // Remplacez les numéros de broches sel
 int vitesseMoteurG = 0;
 int vitesseMoteurD = 0;
 
+// ------------------------- Déclaration des variables des pins ------------------------
+
+const int pinLed = 23;
+const int pinBuzzer = 26;
+const int pinEncD_A = 16;
+const int pinEncD_B = 4;
+const int pinEncG_A = 34;
+const int pinEncG_B = 35;
+
 // ------------------------- Déclaration des variables du mpu ------------------------
 
 Adafruit_MPU6050 mpu;
@@ -35,9 +44,9 @@ float thetaGF, thetaRF, thetaFC;
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 500.0;  // Gain proportionnel
+float kp = 10.0;  // Gain proportionnel
 float ki = 0;      // Gain intégral
-float kd = 2000.0; // Gain dérivé
+float kd = 100.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
@@ -50,6 +59,8 @@ float erreur = 0.0;
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
+void buzzer(int frequence, int duree);
+void reception(char ch);
 
 // --------------------- Fonction de calcul des angles ---------------------
 
@@ -91,6 +102,9 @@ void setup()
   // put your setup code here, to run once:
   Serial.begin(115200);
 
+  pinMode(pinLed, OUTPUT);
+  pinMode(pinBuzzer, OUTPUT);
+
   // Try to initialize!
   if (!mpu.begin())
   {
@@ -115,6 +129,8 @@ void setup()
   // calcul coeff filtre
   A = 1 / (1 + Tau / Te);
   B = Tau / Te;
+
+  buzzer(1000, 100);
 }
 
 void reception(char ch)
@@ -143,6 +159,7 @@ void reception(char ch)
 
     if (commande == "kp")
     {
+      digitalWrite(pinLed, HIGH);
       kp = valeur.toFloat();
     }
     if (commande == "kd")
@@ -182,26 +199,19 @@ void loop()
 void asservissementPosition(float consigne, float mesure)
 {
   // Calcul de l'erreur
-  erreur = (DEG_TO_RAD * consigne) - mesure;
+  erreur = consigne - mesure;
 
   // Calcul des termes PID
   terme_prop = kp * erreur;
   erreur_cumulee += ki * erreur;
-  terme_deriv = kd * (erreur - erreur_precedente);
+  terme_deriv = kd * (-mesure);
 
   // Calcul de la commande finale
   commande = terme_prop + terme_deriv + erreur_cumulee;
 
   // Limiter la commande pour éviter des valeurs excessives
-  // (en fonction des caractéristiques de votre gyropode)
-  if (commande > MAX_COMMANDE)
-  {
-    commande = MAX_COMMANDE;
-  }
-  else if (commande < -MAX_COMMANDE)
-  {
-    commande = -MAX_COMMANDE;
-  }
+  commande = constrain(commande, -MAX_COMMANDE, MAX_COMMANDE);
+  commande = 0;
 
   // Appliquer la commande aux moteurs du gyropode
   // (à adapter en fonction de votre configuration matérielle)
@@ -209,6 +219,11 @@ void asservissementPosition(float consigne, float mesure)
 
   // Mettre à jour l'erreur précédente pour le terme dérivé
   erreur_precedente = erreur;
+}
+
+void buzzer(int frequence, int duree)
+{
+  tone(pinBuzzer, frequence, duree);
 }
 
 void serialEvent()
