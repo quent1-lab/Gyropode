@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <controleMoteur.h>
 #include <freertos/FreeRTOS.h>
-#include <melodie.h> 
+#include <melodie.h>
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
 
@@ -51,9 +51,9 @@ float theta0 = 0.0; // angle d'équilibre
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 400.0;  // Gain proportionnel
+float kp = 500.0; // Gain proportionnel
 float ki = 0;     // Gain intégral
-float kd = 60.0; // Gain dérivé
+float kd = 60.0;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
@@ -66,7 +66,6 @@ float erreur = 0.0;
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
-void buzzer(int frequence, int duree);
 void reception(char ch);
 
 // --------------------- Fonction de calcul des angles ---------------------
@@ -139,7 +138,7 @@ void setup()
   B = Tau / Te;
 
   moteurs.setAlphaFrottement(0.25);
-  //melodie.choisirMelodie(1);
+  melodie.choisirMelodie(1);
 }
 
 void reception(char ch)
@@ -187,7 +186,6 @@ void reception(char ch)
       theta0 = valeur.toFloat();
     }
 
-
     chaine = "";
   }
   else
@@ -201,15 +199,6 @@ void loop()
   if (FlagCalcul == 1)
   {
     Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur, terme_prop, terme_deriv, commande);
-
-    /*Serial.print("erreur : ");
-    Serial.print(erreur);
-    Serial.print(" | terme_prop : ");
-    Serial.print(terme_prop);
-    Serial.print(" | terme_deriv : ");
-    Serial.print(terme_deriv);
-    Serial.print(" | commande : ");
-    Serial.println(commande);*/
 
     FlagCalcul = 0;
   }
@@ -238,11 +227,6 @@ void asservissementPosition(float consigne, float mesure)
 
   // Mettre à jour l'erreur précédente pour le terme dérivé
   erreur_precedente = erreur;
-}
-
-void buzzer(int frequence, int duree)
-{
-  tone(pinBuzzer, frequence, duree);
 }
 
 void serialEvent()
