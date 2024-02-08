@@ -9,6 +9,7 @@
 #include <Encodeur.h>
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE_THETA 0.05 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -32,7 +33,9 @@ Melodie melodie(26);
 
 // ------------------------- Déclaration des variables des encodeurs ------------------------
 
-Encodeur encodeur(pinEncD_A, pinEncD_B, pinEncG_A, pinEncG_B);
+Encodeur encodeur(pinEncD_B, pinEncD_A, pinEncG_A, pinEncG_B);
+int countD = 0;
+int countG = 0;
 
 // ------------------------- Déclaration des variables du mpu ------------------------
 
@@ -70,9 +73,25 @@ float erreur_precedente = 0.0;
 float commande = 0.0;
 float erreur = 0.0;
 
+// ----------------------- Déclaration des variables PID pour l'angle -----------------------
+
+// Constantes du régulateur PID
+float kp_t = 1.0; // Gain proportionnel
+float ki_t = 0;     // Gain intégral
+float kd_t = 1.0;  // Gain dérivé
+
+// Variables globales pour le PID
+float terme_prop_t = 0.0;
+float terme_deriv_t = 0.0;
+float erreur_cumulee_t = 0.0;
+float erreur_precedente_t = 0.0;
+float commande_t = 0.0;
+float erreur_t = 0.0;
+
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
+float asservissementTheta(float consigne, float mesure);
 void reception(char ch);
 
 // --------------------- Fonction de calcul des angles ---------------------
@@ -100,9 +119,13 @@ void controle(void *parameters)
       // Filtre complémentaire
       thetaFC = thetaGF + thetaRF;
     }
+
+    countD = encodeur.get_countD();
+    countG = encodeur.get_countG();
     encodeur.odometrie();
 
-    asservissementPosition(0, thetaFC);
+    float theta_consigne = asservissementTheta(0, encodeur.get_x());
+    asservissementPosition(theta_consigne, thetaFC);
 
     moteurs.updateMoteurs();
     FlagCalcul = 1;
@@ -119,6 +142,10 @@ void setup()
   pinMode(pinLed, OUTPUT);
   pinMode(pinBuzzer, OUTPUT);
   pinMode(pinBatterie, INPUT);
+  pinMode(pinEncD_A, INPUT);
+  pinMode(pinEncD_B, INPUT);
+  pinMode(pinEncG_A, INPUT);
+  pinMode(pinEncG_B, INPUT);
 
   // Try to initialize!
   if (!mpu.begin())
@@ -145,11 +172,10 @@ void setup()
   A = 1 / (1 + Tau / Te);
   B = Tau / Te;
 
-  encodeur.init(0, 0, 0, 34, 255, 11, 1);
-  encodeur.reset();
+  encodeur.init(0, 0, 0, 34, 255, 22, 34);
 
   moteurs.setAlphaFrottement(0.25);
-  melodie.choisirMelodie(1);
+  //melodie.choisirMelodie(1);
 }
 
 void reception(char ch)
@@ -178,15 +204,15 @@ void reception(char ch)
 
     if (commande == "kp")
     {
-      kp = valeur.toFloat();
+      kp_t = valeur.toFloat();
     }
     if (commande == "kd")
     {
-      kd = valeur.toInt();
+      kd_t = valeur.toInt();
     }
     if (commande == "ki")
     {
-      ki = valeur.toInt();
+      ki_t = valeur.toInt();
     }
     if (commande == "af")
     {
@@ -213,6 +239,18 @@ void loop()
 
     FlagCalcul = 0;
   }
+
+  //Calcul de la tension de la batterie
+  float tension = analogRead(pinBatterie) * (7.2 / 1023.0);
+  if(tension < 6.5)
+  {
+    digitalWrite(pinLed, HIGH);
+  }
+  else
+  {
+    digitalWrite(pinLed, LOW);
+  }
+
 }
 
 // Fonction de régulation PID en position
@@ -239,6 +277,65 @@ void asservissementPosition(float consigne, float mesure)
   // Mettre à jour l'erreur précédente pour le terme dérivé
   erreur_precedente = erreur;
 }
+
+float asservissementTheta(float consigne, float mesure)
+{
+  // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
+  // Entrée : consigne en milimètres
+  // Entrée : mesure en milimètres
+  // Sortie : consigne theta en radian
+
+  // Calcul de l'erreur
+  erreur_t = consigne - mesure;
+
+  // Calcul des termes PID
+  terme_prop_t = kp_t * erreur;
+  terme_deriv_t = kd_t * (erreur - erreur_precedente_t);
+  erreur_cumulee_t += ki_t * erreur;
+
+  // Calcul de la commande finale
+  commande_t = terme_prop + terme_deriv + erreur_cumulee_t;
+
+  // Limiter la commande pour éviter des valeurs excessives
+  commande_t = constrain(commande_t, -MAX_COMMANDE_THETA, MAX_COMMANDE_THETA);
+
+  // Mettre à jour l'erreur précédente pour le terme dérivé
+  erreur_precedente_t = erreur_t;
+
+  // Retourner la consigne theta
+  return commande_t;
+}
+
+/*void asservissementPasAPas(float consigne_x, float consigne_y)
+{
+  // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
+
+  // Calcul de l'erreur
+  float erreur_x = encodeur.get_x() - encodeur.x_to_step(consigne_x);
+  float erreur_y = encodeur.get_y() - encodeur.y_to_step(consigne_y);
+
+  // Calcul des termes PID
+  float terme_prop_x = kp_x * erreur_x;
+  float terme_prop_y = kp_y * erreur_y;
+  float terme_deriv_x = kd_x * (erreur_x - erreur_precedente_x);
+  float terme_deriv_y = kd_y * (erreur_y - erreur_precedente_y);
+  erreur_cumulee_x += ki_x * erreur_x;
+  erreur_cumulee_y += ki_y * erreur_y;
+
+  // Calcul de la commande finale
+  float commande_x = terme_prop_x + terme_deriv_x + erreur_cumulee_x;
+  float commande_y = terme_prop_y + terme_deriv_y + erreur_cumulee_y;
+
+  // Limiter la commande pour éviter des valeurs excessives
+  commande_x = constrain(commande_x, -MAX_COMMANDE_X, MAX_COMMANDE_X);
+  commande_y = constrain(commande_y, -MAX_COMMANDE_Y, MAX_COMMANDE_Y);
+
+  // Appliquer la commande aux moteurs du gyropode
+  
+  // Mettre à jour l'erreur précédente pour le terme dérivé
+  erreur_precedente_x = erreur_x;
+  erreur_precedente_y = erreur_y;
+}*/
 
 void serialEvent()
 {

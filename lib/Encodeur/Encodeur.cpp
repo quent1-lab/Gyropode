@@ -24,8 +24,8 @@ void Encodeur::init()
     this->x = 0;
     this->y = 0;
     this->theta = 0;
-    this->rayon = 22;
-    this->entraxe = 88;
+    this->rayon = 1;
+    this->entraxe = 1;
     this->reduction = 1;
     this->resolution = 1;
     this->encoderD.setCount(0);
@@ -177,7 +177,7 @@ void Encodeur::odometrie()
     this->x += deltaS * cos(this->theta);
     this->y += deltaS * sin(-this->theta);
 
-    print(this->countD,this->countG);
+    //print(this->countD,this->countG);
     
     // Mise à jour des variables
     this->oldPositionD = this->countD;
