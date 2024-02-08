@@ -6,10 +6,9 @@
 #include <controleMoteur.h>
 #include <freertos/FreeRTOS.h>
 #include <melodie.h>
+#include <Encodeur.h>
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
-
-Melodie melodie(26);
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -26,6 +25,14 @@ const int pinEncD_B = 4;
 const int pinEncG_A = 34;
 const int pinEncG_B = 35;
 const int pinBatterie = 39;
+
+// ------------------------- Déclaration des variables pour la mélodie ------------------------
+
+Melodie melodie(26);
+
+// ------------------------- Déclaration des variables des encodeurs ------------------------
+
+Encodeur encodeur(pinEncD_A, pinEncD_B, pinEncG_A, pinEncG_B);
 
 // ------------------------- Déclaration des variables du mpu ------------------------
 
@@ -93,6 +100,7 @@ void controle(void *parameters)
       // Filtre complémentaire
       thetaFC = thetaGF + thetaRF;
     }
+    encodeur.odometrie();
 
     asservissementPosition(0, thetaFC);
 
@@ -136,6 +144,9 @@ void setup()
   // calcul coeff filtre
   A = 1 / (1 + Tau / Te);
   B = Tau / Te;
+
+  encodeur.init(0, 0, 0, 34, 255, 11, 1);
+  encodeur.reset();
 
   moteurs.setAlphaFrottement(0.25);
   melodie.choisirMelodie(1);
