@@ -9,7 +9,7 @@
 #include <Encodeur.h>
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
-#define MAX_COMMANDE_THETA 0.05 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -78,7 +78,7 @@ float erreur = 0.0;
 // Constantes du régulateur PID
 float kp_t = 1.0; // Gain proportionnel
 float ki_t = 0;     // Gain intégral
-float kd_t = 1.0;  // Gain dérivé
+float kd_t = 0.0;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_t = 0.0;
@@ -235,13 +235,14 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur, terme_prop, terme_deriv, commande);
+    Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
 
     FlagCalcul = 0;
   }
 
   //Calcul de la tension de la batterie
-  float tension = analogRead(pinBatterie) * (7.2 / 1023.0);
+  /*float tension = analogRead(pinBatterie) * (7.2 / 4095.0);
+  Serial.println(tension);
   if(tension < 6.5)
   {
     digitalWrite(pinLed, HIGH);
@@ -249,7 +250,7 @@ void loop()
   else
   {
     digitalWrite(pinLed, LOW);
-  }
+  }*/
 
 }
 
@@ -289,12 +290,12 @@ float asservissementTheta(float consigne, float mesure)
   erreur_t = consigne - mesure;
 
   // Calcul des termes PID
-  terme_prop_t = kp_t * erreur;
-  terme_deriv_t = kd_t * (erreur - erreur_precedente_t);
-  erreur_cumulee_t += ki_t * erreur;
+  terme_prop_t = kp_t * erreur_t;
+  terme_deriv_t = kd_t * (erreur_t - erreur_precedente_t)/Te;
+  erreur_cumulee_t += ki_t * erreur_t;
 
   // Calcul de la commande finale
-  commande_t = terme_prop + terme_deriv + erreur_cumulee_t;
+  commande_t = terme_prop_t + terme_deriv_t + erreur_cumulee_t;
 
   // Limiter la commande pour éviter des valeurs excessives
   commande_t = constrain(commande_t, -MAX_COMMANDE_THETA, MAX_COMMANDE_THETA);
