@@ -7,6 +7,9 @@
 #include <freertos/FreeRTOS.h>
 #include <melodie.h>
 #include <Encodeur.h>
+#include <BluetoothSerial.h>
+
+BluetoothSerial SerialBT;
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
 #define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
@@ -134,6 +137,34 @@ void controle(void *parameters)
   }
 }
 
+// --------------------- Fonction de bluethoot ---------------------
+
+void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
+{
+  uint16_t RxTaille, i;
+  if (event == ESP_SPP_SRV_OPEN_EVT)
+  {
+    Serial.println("Client connecté à l'adresse : ");
+    for (i = 0; i < 6; i++)
+    {
+      Serial.printf("%02X", param->srv_open.rem_bda[i]);
+      if (i < 5)
+      {
+        Serial.print(":");
+      }
+    }
+  }
+
+  if (event == ESP_SPP_DATA_IND_EVT)
+  {
+    RxTaille = param->data_ind.len;
+    for (i = 0; i < RxTaille; i++)
+    {
+      reception(param->data_ind.data[i]);
+    }
+  }
+}
+
 void setup()
 {
   // put your setup code here, to run once:
@@ -173,6 +204,8 @@ void setup()
   B = Tau / Te;
 
   encodeur.init(0, 0, 0, 34, 255, 22, 34);
+
+  SerialBT.register_callback(callback);
 
   moteurs.setAlphaFrottement(0.25);
   //melodie.choisirMelodie(1);
