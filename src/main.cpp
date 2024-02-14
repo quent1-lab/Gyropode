@@ -10,6 +10,7 @@
 #include <BluetoothSerial.h>
 
 BluetoothSerial SerialBT;
+QueueHandle_t queue;
 
 #define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
 #define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
@@ -142,6 +143,7 @@ void controle(void *parameters)
 void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
   uint16_t RxTaille, i;
+  uint16_t data;
   if (event == ESP_SPP_SRV_OPEN_EVT)
   {
     Serial.println("Client connecté à l'adresse : ");
@@ -158,10 +160,24 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
   if (event == ESP_SPP_DATA_IND_EVT)
   {
     RxTaille = param->data_ind.len;
-    for (i = 0; i < RxTaille; i++)
+    queue = xQueueCreate(RxTaille, sizeof(uint16_t));
+    data = *(param->data_ind.data);
+    xQueueSend(queue, &data, portMAX_DELAY);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+
+void vReceptionBT(void *pvParameters)
+{
+  uint16_t data;
+  while (1)
+  {
+    if (xQueueReceive(queue, &data, portMAX_DELAY))
     {
-      reception(param->data_ind.data[i]);
+      SerialBT.readBytes((char *)&data, sizeof(data));
+      Serial.println(data);
     }
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
@@ -195,8 +211,16 @@ void setup()
       "controle", // nom de la tache que nous venons de vréer
       10000,      // taille de la pile en octet
       NULL,       // parametre
-      10,         // tres haut niveau de priorite
+      5,         // tres haut niveau de priorite
       NULL        // descripteur
+  );
+  xTaskCreate(
+      vReceptionBT,   // nom de la fonction
+      "vReceptionBT", // nom de la tache que nous venons de vréer
+      10000,          // taille de la pile en octet
+      NULL,           // parametre
+      10,             // tres haut niveau de priorite
+      NULL            // descripteur
   );
 
   // calcul coeff filtre
@@ -205,6 +229,7 @@ void setup()
 
   encodeur.init(0, 0, 0, 34, 255, 22, 34);
 
+  SerialBT.begin("ESP32_Gyro"); //Nom du module bluetooth
   SerialBT.register_callback(callback);
 
   moteurs.setAlphaFrottement(0.25);
