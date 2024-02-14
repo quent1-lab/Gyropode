@@ -171,7 +171,12 @@ void vReceptionBT(void *pvParameters)
 {
   uint16_t data;
   while (1)
-  {
+  { 
+    if(queue == NULL)
+    {
+      vTaskDelay(10 / portTICK_PERIOD_MS);
+      continue;
+    }
     if (xQueueReceive(queue, &data, portMAX_DELAY))
     {
       SerialBT.readBytes((char *)&data, sizeof(data));
@@ -229,7 +234,7 @@ void setup()
 
   encodeur.init(0, 0, 0, 34, 255, 22, 34);
 
-  SerialBT.begin("ESP32_Gyro"); //Nom du module bluetooth
+  SerialBT.begin("ESP32_Gyro_Q"); //Nom du module bluetooth
   SerialBT.register_callback(callback);
 
   moteurs.setAlphaFrottement(0.25);
@@ -293,7 +298,7 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    //Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
 
     FlagCalcul = 0;
   }
