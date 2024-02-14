@@ -191,7 +191,10 @@ void vReceptionBT(void *pvParameters)
       int bytesRead = SerialBT.readBytes(buffer, data);
       buffer[bytesRead] = '\0'; // Assurez-vous que la chaîne est terminée par un caractère nul
       Serial.printf("Données reçues : %s", buffer);
-      // fini la lecture de la queue
+      for (int i = 0; i < bytesRead; i++)
+      {
+        reception(buffer[i]);
+      }
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -241,14 +244,7 @@ void setup()
     Serial.println("MPU6050 Found!");
   }
 
-  xTaskCreate(
-      controle,   // nom de la fonction
-      "controle", // nom de la tache que nous venons de vréer
-      10000,      // taille de la pile en octet
-      NULL,       // parametre
-      5,          // tres haut niveau de priorite
-      NULL        // descripteur
-  );
+  xTaskCreate(controle, "controle", 10000, NULL, 5, NULL);
   xTaskCreate(vReceptionBT, "vReceptionBT", 10000, NULL, 8, NULL);
   xTaskCreate(vEnvoieBT, "vEnvoieBT", 10000, NULL, 10, NULL);
 
@@ -333,7 +329,6 @@ void loop()
 
     sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
-    Serial.printf("%s", bufferSend);
 
     FlagCalcul = 0;
 
