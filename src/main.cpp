@@ -143,7 +143,6 @@ void controle(void *parameters)
 void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
   uint16_t RxTaille, i;
-  uint16_t data;
   if (event == ESP_SPP_SRV_OPEN_EVT)
   {
     Serial.println("Client connecté à l'adresse : ");
@@ -156,33 +155,42 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
       }
     }
     Serial.println("");
+    // Créer la file d'attente lors de la connexion du client
+    queue = xQueueCreate(10, sizeof(uint16_t));
   }
 
   if (event == ESP_SPP_DATA_IND_EVT)
   {
     RxTaille = param->data_ind.len;
-    queue = xQueueCreate(RxTaille, sizeof(uint16_t));
-    data = *(param->data_ind.data);
-    xQueueSend(queue, &data, portMAX_DELAY);
+    // Envoyer la taille des données à la file d'attente
+    if (queue != NULL)
+    {
+      xQueueSend(queue, &RxTaille, portMAX_DELAY);
+    }
+    else
+    {
+      Serial.println("Erreur : la file d'attente n'a pas été créée.");
+    }
   }
 }
 
 void vReceptionBT(void *pvParameters)
 {
   char buffer[101]; // +1 pour le caractère nul de fin de chaîne
+  uint16_t data;
   while (1)
-  { 
-    if(queue == NULL)
+  {
+    if (queue == NULL)
     {
       vTaskDelay(10 / portTICK_PERIOD_MS);
       continue;
     }
-    if (xQueueReceive(queue, &buffer, portMAX_DELAY))
+    if (xQueueReceive(queue, &data, portMAX_DELAY))
     {
-      int bytesRead = SerialBT.readBytes(buffer, 100);
+      int bytesRead = SerialBT.readBytes(buffer, data);
       buffer[bytesRead] = '\0'; // Assurez-vous que la chaîne est terminée par un caractère nul
-      Serial.printf("Données reçues : %s\n", buffer);
-      //fini la lecture de la queue
+      Serial.printf("Données reçues : %s", buffer);
+      // fini la lecture de la queue
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
