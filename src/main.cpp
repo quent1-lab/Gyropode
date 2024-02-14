@@ -12,7 +12,7 @@
 BluetoothSerial SerialBT;
 QueueHandle_t queue;
 
-#define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE 100        // Valeur maximale de la commande moteur
 #define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
@@ -81,8 +81,8 @@ float erreur = 0.0;
 
 // Constantes du régulateur PID
 float kp_t = 1.0; // Gain proportionnel
-float ki_t = 0;     // Gain intégral
-float kd_t = 0.0;  // Gain dérivé
+float ki_t = 0;   // Gain intégral
+float kd_t = 0.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_t = 0.0;
@@ -155,6 +155,7 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
         Serial.print(":");
       }
     }
+    Serial.println("");
   }
 
   if (event == ESP_SPP_DATA_IND_EVT)
@@ -163,13 +164,12 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
     queue = xQueueCreate(RxTaille, sizeof(uint16_t));
     data = *(param->data_ind.data);
     xQueueSend(queue, &data, portMAX_DELAY);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
 void vReceptionBT(void *pvParameters)
 {
-  uint16_t data;
+  char buffer[101]; // +1 pour le caractère nul de fin de chaîne
   while (1)
   { 
     if(queue == NULL)
@@ -177,11 +177,14 @@ void vReceptionBT(void *pvParameters)
       vTaskDelay(10 / portTICK_PERIOD_MS);
       continue;
     }
-    if (xQueueReceive(queue, &data, portMAX_DELAY))
+    if (xQueueReceive(queue, &buffer, portMAX_DELAY))
     {
-      SerialBT.readBytes((char *)&data, sizeof(data));
-      Serial.println(data);
+      int bytesRead = SerialBT.readBytes(buffer, 100);
+      buffer[bytesRead] = '\0'; // Assurez-vous que la chaîne est terminée par un caractère nul
+      Serial.printf("Données reçues : %s\n", buffer);
+      //fini la lecture de la queue
     }
+
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
@@ -216,7 +219,7 @@ void setup()
       "controle", // nom de la tache que nous venons de vréer
       10000,      // taille de la pile en octet
       NULL,       // parametre
-      5,         // tres haut niveau de priorite
+      5,          // tres haut niveau de priorite
       NULL        // descripteur
   );
   xTaskCreate(
@@ -234,11 +237,11 @@ void setup()
 
   encodeur.init(0, 0, 0, 34, 255, 22, 34);
 
-  SerialBT.begin("ESP32_Gyro_Q"); //Nom du module bluetooth
+  SerialBT.begin("ESP32_Gyro_Q"); // Nom du module bluetooth
   SerialBT.register_callback(callback);
 
   moteurs.setAlphaFrottement(0.25);
-  //melodie.choisirMelodie(1);
+  // melodie.choisirMelodie(1);
 }
 
 void reception(char ch)
@@ -298,12 +301,12 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    //Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    // Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
 
     FlagCalcul = 0;
   }
 
-  //Calcul de la tension de la batterie
+  // Calcul de la tension de la batterie
   /*float tension = analogRead(pinBatterie) * (7.2 / 4095.0);
   Serial.println(tension);
   if(tension < 6.5)
@@ -314,7 +317,6 @@ void loop()
   {
     digitalWrite(pinLed, LOW);
   }*/
-
 }
 
 // Fonction de régulation PID en position
@@ -354,7 +356,7 @@ float asservissementTheta(float consigne, float mesure)
 
   // Calcul des termes PID
   terme_prop_t = kp_t * erreur_t;
-  terme_deriv_t = kd_t * (erreur_t - erreur_precedente_t)/Te;
+  terme_deriv_t = kd_t * (erreur_t - erreur_precedente_t) / Te;
   erreur_cumulee_t += ki_t * erreur_t;
 
   // Calcul de la commande finale
@@ -395,7 +397,7 @@ float asservissementTheta(float consigne, float mesure)
   commande_y = constrain(commande_y, -MAX_COMMANDE_Y, MAX_COMMANDE_Y);
 
   // Appliquer la commande aux moteurs du gyropode
-  
+
   // Mettre à jour l'erreur précédente pour le terme dérivé
   erreur_precedente_x = erreur_x;
   erreur_precedente_y = erreur_y;
