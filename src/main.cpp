@@ -11,6 +11,7 @@
 
 BluetoothSerial SerialBT;
 QueueHandle_t queue;
+QueueHandle_t queueEnvoie;
 
 #define MAX_COMMANDE 100        // Valeur maximale de la commande moteur
 #define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
@@ -197,6 +198,24 @@ void vReceptionBT(void *pvParameters)
   }
 }
 
+void vEnvoieBT(void *pvParameters)
+{
+  char *data;
+  while (1)
+  {
+    if (queueEnvoie == NULL)
+    {
+      vTaskDelay(10 / portTICK_PERIOD_MS);
+      continue;
+    }
+    if (xQueueReceive(queueEnvoie, &data, portMAX_DELAY))
+    {
+      SerialBT.printf("%s", data);
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
 void setup()
 {
   // put your setup code here, to run once:
@@ -230,14 +249,10 @@ void setup()
       5,          // tres haut niveau de priorite
       NULL        // descripteur
   );
-  xTaskCreate(
-      vReceptionBT,   // nom de la fonction
-      "vReceptionBT", // nom de la tache que nous venons de vréer
-      10000,          // taille de la pile en octet
-      NULL,           // parametre
-      10,             // tres haut niveau de priorite
-      NULL            // descripteur
-  );
+  xTaskCreate(vReceptionBT, "vReceptionBT", 10000, NULL, 8, NULL);
+  xTaskCreate(vEnvoieBT, "vEnvoieBT", 10000, NULL, 10, NULL);
+
+  queueEnvoie = xQueueCreate(100, sizeof(char *));
 
   // calcul coeff filtre
   A = 1 / (1 + Tau / Te);
@@ -309,9 +324,21 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    // Serial.printf("%3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    // Allouer de la mémoire pour la chaîne à envoyer
+    char *bufferSend = (char *)malloc(100 * sizeof(char));
+    if (bufferSend == NULL)
+    {
+      // Gérer l'erreur d'allocation de mémoire ici
+    }
+
+    sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
+    Serial.printf("%s", bufferSend);
 
     FlagCalcul = 0;
+
+    // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
+    free(bufferSend);
   }
 
   // Calcul de la tension de la batterie
