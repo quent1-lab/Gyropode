@@ -13,7 +13,7 @@ BluetoothSerial SerialBT;
 QueueHandle_t queue;
 QueueHandle_t queueEnvoie;
 
-#define MAX_COMMANDE 100        // Valeur maximale de la commande moteur
+#define MAX_COMMANDE 100       // Valeur maximale de la commande moteur
 #define MAX_COMMANDE_THETA 1.0 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
@@ -81,9 +81,9 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_t = 1.0; // Gain proportionnel
+float kp_t = -0.2; // Gain proportionnel
 float ki_t = 0;   // Gain intégral
-float kd_t = 0.0; // Gain dérivé
+float kd_t = 10.0; // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_t = 0.0;
@@ -96,12 +96,14 @@ float erreur_t = 0.0;
 float pos_x_prec = 0.0;
 float vitesse = 0.0;
 float vitesse_prec = 0.0;
+bool debout = true;
 
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
 float asservissementTheta(float consigne, float mesure);
 void reception(char ch);
+void relevage(float theta);
 
 // --------------------- Fonction de calcul des angles ---------------------
 
@@ -111,37 +113,39 @@ void controle(void *parameters)
   xLastWakeTime = xTaskGetTickCount();
   while (1)
   {
-    if (mpu_ok)
+    if (debout)
     {
-      // Acquisition
-      mpu.getEvent(&a, &g, &temp);
+      if (mpu_ok)
+      {
+        // Acquisition
+        mpu.getEvent(&a, &g, &temp);
 
-      // Calcul des angles
-      thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
-      thetaR = -g.gyro.z * Tau / 1000;
+        // Calcul des angles
+        thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
+        thetaR = -g.gyro.z * Tau / 1000;
 
-      // Appliquer le filtre passe-bas
-      thetaGF = A * (thetaG + B * thetaGF);
-      // Appliquer le filtre passe-haut sur l'angle gyro
-      thetaRF = A * (thetaR + B * thetaRF);
+        // Appliquer le filtre passe-bas
+        thetaGF = A * (thetaG + B * thetaGF);
+        // Appliquer le filtre passe-haut sur l'angle gyro
+        thetaRF = A * (thetaR + B * thetaRF);
 
-      // Filtre complémentaire
-      thetaFC = thetaGF + thetaRF;
+        // Filtre complémentaire
+        thetaFC = thetaGF + thetaRF;
+      }
+
+      countD = encodeur.get_countD();
+      countG = encodeur.get_countG();
+      encodeur.odometrie();
+
+      vitesse = (encodeur.get_x() - pos_x_prec) / Te;
+      pos_x_prec = encodeur.get_x();
+
+      float theta_consigne = asservissementTheta(0, vitesse);
+      asservissementPosition(theta_consigne, thetaFC);
+
+      moteurs.updateMoteurs();
+      FlagCalcul = 1;
     }
-
-    countD = encodeur.get_countD();
-    countG = encodeur.get_countG();
-    encodeur.odometrie();
-
-    vitesse = (encodeur.get_x() - pos_x_prec) / Te;
-    pos_x_prec = encodeur.get_x();
-
-    float theta_consigne = asservissementTheta(0, vitesse);
-    asservissementPosition(theta_consigne, thetaFC);
-
-    moteurs.updateMoteurs();
-    FlagCalcul = 1;
-
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(Te));
   }
 }
@@ -268,6 +272,13 @@ void setup()
 
   moteurs.setAlphaFrottement(0.25);
   // melodie.choisirMelodie(1);
+
+  // Acquisition
+  //mpu.getEvent(&a, &g, &temp);
+
+  // Calcul des angles
+  //thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
+  //relevage(thetaG);
 }
 
 void reception(char ch)
@@ -336,11 +347,11 @@ void loop()
 
     sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);*/
-    printf("theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    printf("theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur, terme_prop_t, terme_deriv_t, commande_t);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
-    //free(bufferSend);
+    // free(bufferSend);
   }
 
   // Calcul de la tension de la batterie
@@ -439,6 +450,31 @@ float asservissementTheta(float consigne, float mesure)
   erreur_precedente_x = erreur_x;
   erreur_precedente_y = erreur_y;
 }*/
+
+void relevage(float theta)
+{
+  // si theta est positif, on tourne dans le sens horaire
+  // si theta est négatif, on tourne dans le sens anti-horaire
+  if (theta < -0.5)
+  {
+    moteurs.setVitesses(-100, -100);
+    moteurs.updateMoteurs();
+    delay(1000);
+    moteurs.setVitesses(100, 100);
+    moteurs.updateMoteurs();
+    delay(500);
+  }
+  else if (theta < -0.5)
+  {
+    moteurs.setVitesses(100, 100);
+    moteurs.updateMoteurs();
+    delay(1000);
+    moteurs.setVitesses(-100, -100);
+    moteurs.updateMoteurs();
+    delay(500);
+  }
+  debout = true;
+}
 
 void serialEvent()
 {
