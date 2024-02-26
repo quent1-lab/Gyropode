@@ -14,7 +14,7 @@ QueueHandle_t queue;
 QueueHandle_t queueEnvoie;
 
 #define MAX_COMMANDE 100        // Valeur maximale de la commande moteur
-#define MAX_COMMANDE_THETA 0.02 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE_THETA 1.0 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -93,6 +93,10 @@ float erreur_precedente_t = 0.0;
 float commande_t = 0.0;
 float erreur_t = 0.0;
 
+float pos_x_prec = 0.0;
+float vitesse = 0.0;
+float vitesse_prec = 0.0;
+
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
@@ -129,7 +133,10 @@ void controle(void *parameters)
     countG = encodeur.get_countG();
     encodeur.odometrie();
 
-    float theta_consigne = asservissementTheta(0, encodeur.get_x());
+    vitesse = (encodeur.get_x() - pos_x_prec) / Te;
+    pos_x_prec = encodeur.get_x();
+
+    float theta_consigne = asservissementTheta(0, vitesse);
     asservissementPosition(theta_consigne, thetaFC);
 
     moteurs.updateMoteurs();
@@ -320,7 +327,7 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    // Allouer de la mémoire pour la chaîne à envoyer
+    /*// Allouer de la mémoire pour la chaîne à envoyer
     char *bufferSend = (char *)malloc(100 * sizeof(char));
     if (bufferSend == NULL)
     {
@@ -328,12 +335,12 @@ void loop()
     }
 
     sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
-    xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
-
+    xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);*/
+    printf("theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
-    free(bufferSend);
+    //free(bufferSend);
   }
 
   // Calcul de la tension de la batterie
