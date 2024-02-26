@@ -14,7 +14,7 @@ QueueHandle_t queue;
 QueueHandle_t queueEnvoie;
 
 #define MAX_COMMANDE 100        // Valeur maximale de la commande moteur
-#define MAX_COMMANDE_THETA 0.08 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE_THETA 0.02 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -215,7 +215,7 @@ void vEnvoieBT(void *pvParameters)
     {
       SerialBT.printf("%s", data);
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 }
 
