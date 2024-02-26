@@ -61,7 +61,7 @@ float thetaG, thetaR;
 // angle filtre
 float thetaGF, thetaRF, thetaFC;
 
-float theta0 = 0.0; // angle d'équilibre
+float theta0 = -0.01; // angle d'équilibre
 
 // ----------------------- Déclaration des variables PID -----------------------
 
