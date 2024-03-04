@@ -95,8 +95,11 @@ float erreur_t = 0.0;
 
 float pos_x_prec = 0.0;
 float vitesse = 0.0;
+float vitesse_F = 0.0;
 float vitesse_prec = 0.0;
 bool debout = true;
+float pos_x = 0;
+
 
 // ----------------------- Déclaration des fonctions -----------------------
 
@@ -136,11 +139,19 @@ void controle(void *parameters)
       countD = encodeur.get_countD();
       countG = encodeur.get_countG();
       encodeur.odometrie();
+      pos_x = encodeur.get_x();
 
-      vitesse = (encodeur.get_x() - pos_x_prec) / Te;
-      pos_x_prec = encodeur.get_x();
+      vitesse = (pos_x - pos_x_prec)*1.0 / Te;
 
-      float theta_consigne = asservissementTheta(0, vitesse);
+      // Ajout d'un filtre passe bas sur la vitesse
+      float Tau_v = 250;
+      float A_v = 1 / (1 + Tau_v / Te);
+      float B_v = Tau_v / Te;
+      vitesse_F = A_v * (vitesse + B_v * vitesse_prec);
+      vitesse_prec = vitesse_F;
+      pos_x_prec = pos_x;
+
+      float theta_consigne = asservissementTheta(0, vitesse_F);
       asservissementPosition(theta_consigne, thetaFC);
 
       moteurs.updateMoteurs();
@@ -347,7 +358,7 @@ void loop()
 
     sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);*/
-    printf("theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur, terme_prop_t, terme_deriv_t, commande_t);
+    printf("%3.4lf %3.4lf %5.1lf %2.3lf \n", vitesse, vitesse_F, pos_x, commande_t);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
