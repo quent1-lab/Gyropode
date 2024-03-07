@@ -14,7 +14,7 @@ QueueHandle_t queue;
 QueueHandle_t queueEnvoie;
 
 #define MAX_COMMANDE 100       // Valeur maximale de la commande moteur
-#define MAX_COMMANDE_THETA 1.0 // Valeur maximale de la commande moteur
+#define MAX_COMMANDE_THETv 1.0 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -51,9 +51,10 @@ bool mpu_ok = true;
 char FlagCalcul = 0;
 float Te = 10;   // période d'échantillonage en ms
 float Tau = 250; // constante de temps du filtre en ms
+float Tau_v = 30;
 
 // coefficient du filtre
-float A, B;
+float A, B, A_v, B_v;
 
 // angle projeté et gyro
 float thetaG, thetaR;
@@ -81,32 +82,30 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_t = -0.2; // Gain proportionnel
-float ki_t = 0;   // Gain intégral
-float kd_t = 10.0; // Gain dérivé
+float kp_v = 0.0;   // Gain proportionnel
+float ki_v = 0.0;   // Gain intégral
+float kd_v = 0.0; // Gain dérivé
 
 // Variables globales pour le PID
-float terme_prop_t = 0.0;
-float terme_deriv_t = 0.0;
-float erreur_cumulee_t = 0.0;
-float erreur_precedente_t = 0.0;
-float commande_t = 0.0;
-float erreur_t = 0.0;
+float terme_prop_v = 0.0;
+float terme_deriv_v = 0.0;
+float erreur_cumulee_v = 0.0;
+float erreur_precedente_v = 0.0;
+float commande_v = 0.0;
+float erreur_v = 0.0;
+float max_commande_v = 0.5;
 
-float pos_x_prec = 0.0;
 float vitesse = 0.0;
 float vitesse_F = 0.0;
 float vitesse_prec = 0.0;
-bool debout = true;
 float pos_x = 0;
-
+float pos_x_prec = 0.0;
 
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementPosition(float consigne, float mesure);
-float asservissementTheta(float consigne, float mesure);
+float asservissementVitesse(float consigne, float mesure);
 void reception(char ch);
-void relevage(float theta);
 
 // --------------------- Fonction de calcul des angles ---------------------
 
@@ -116,47 +115,46 @@ void controle(void *parameters)
   xLastWakeTime = xTaskGetTickCount();
   while (1)
   {
-    if (debout)
+
+    if (mpu_ok)
     {
-      if (mpu_ok)
-      {
-        // Acquisition
-        mpu.getEvent(&a, &g, &temp);
+      // Acquisition
+      mpu.getEvent(&a, &g, &temp);
 
-        // Calcul des angles
-        thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
-        thetaR = -g.gyro.z * Tau / 1000;
+      // Calcul des angles
+      thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
+      thetaR = -g.gyro.z * Tau / 1000;
 
-        // Appliquer le filtre passe-bas
-        thetaGF = A * (thetaG + B * thetaGF);
-        // Appliquer le filtre passe-haut sur l'angle gyro
-        thetaRF = A * (thetaR + B * thetaRF);
+      // Appliquer le filtre passe-bas
+      thetaGF = A * (thetaG + B * thetaGF);
+      // Appliquer le filtre passe-haut sur l'angle gyro
+      thetaRF = A * (thetaR + B * thetaRF);
 
-        // Filtre complémentaire
-        thetaFC = thetaGF + thetaRF;
-      }
-
-      countD = encodeur.get_countD();
-      countG = encodeur.get_countG();
-      encodeur.odometrie();
-      pos_x = encodeur.get_x();
-
-      vitesse = (pos_x - pos_x_prec)*1.0 / Te;
-
-      // Ajout d'un filtre passe bas sur la vitesse
-      float Tau_v = 250;
-      float A_v = 1 / (1 + Tau_v / Te);
-      float B_v = Tau_v / Te;
-      vitesse_F = A_v * (vitesse + B_v * vitesse_prec);
-      vitesse_prec = vitesse_F;
-      pos_x_prec = pos_x;
-
-      float theta_consigne = asservissementTheta(0, vitesse_F);
-      asservissementPosition(theta_consigne, thetaFC);
-
-      moteurs.updateMoteurs();
-      FlagCalcul = 1;
+      // Filtre complémentaire
+      thetaFC = thetaGF + thetaRF;
     }
+
+    countD = encodeur.get_countD();
+    countG = encodeur.get_countG();
+    // encodeur.odometrie();
+    // pos_x = encodeur.get_x();
+
+    pos_x = 1.0 * (countD + countG) / 2;
+
+    vitesse = (pos_x - pos_x_prec) * 1.0 / Te;
+
+    // Ajout d'un filtre passe bas sur la vitesse
+
+    vitesse_F = A_v * (vitesse + B_v * vitesse_prec);
+    vitesse_prec = vitesse_F;
+    pos_x_prec = pos_x;
+
+    float theta_consigne = asservissementVitesse(0, vitesse_F);
+    asservissementPosition(theta_consigne, thetaFC);
+
+    moteurs.updateMoteurs();
+    FlagCalcul = 1;
+
     vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(Te));
   }
 }
@@ -275,6 +273,8 @@ void setup()
   // calcul coeff filtre
   A = 1 / (1 + Tau / Te);
   B = Tau / Te;
+  A_v = 1 / (1 + Tau_v / Te);
+  B_v = Tau_v / Te;
 
   encodeur.init(0, 0, 0, 34, 255, 22, 34);
 
@@ -283,13 +283,6 @@ void setup()
 
   moteurs.setAlphaFrottement(0.25);
   // melodie.choisirMelodie(1);
-
-  // Acquisition
-  //mpu.getEvent(&a, &g, &temp);
-
-  // Calcul des angles
-  //thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
-  //relevage(thetaG);
 }
 
 void reception(char ch)
@@ -316,17 +309,17 @@ void reception(char ch)
       valeur = chaine.substring(index + 1, length);
     }
 
-    if (commande == "kp")
+    if (commande == "kp_v")
     {
-      kp_t = valeur.toFloat();
+      kp_v = valeur.toFloat();
     }
-    if (commande == "kd")
+    if (commande == "kd_v")
     {
-      kd_t = valeur.toInt();
+      kd_v = valeur.toFloat();
     }
-    if (commande == "ki")
+    if (commande == "ki_v")
     {
-      ki_t = valeur.toInt();
+      ki_v = valeur.toFloat();
     }
     if (commande == "af")
     {
@@ -335,6 +328,16 @@ void reception(char ch)
     if (commande == "th")
     {
       theta0 = valeur.toFloat();
+    }
+    if (commande == "to_v")
+    {
+      Tau_v = valeur.toInt();
+      A_v = 1 / (1 + Tau_v / Te);
+      B_v = Tau_v / Te;
+    }
+    if(commande == "max_c")
+    {
+      max_commande_v = valeur.toFloat();
     }
 
     chaine = "";
@@ -356,9 +359,9 @@ void loop()
       // Gérer l'erreur d'allocation de mémoire ici
     }
 
-    sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_t, terme_prop_t, terme_deriv_t, commande_t);
+    sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_v, terme_prop_v, terme_deriv_v, commande_v);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);*/
-    printf("%3.4lf %3.4lf %5.1lf %2.3lf \n", vitesse, vitesse_F, pos_x, commande_t);
+    printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
@@ -403,7 +406,7 @@ void asservissementPosition(float consigne, float mesure)
   erreur_precedente = erreur;
 }
 
-float asservissementTheta(float consigne, float mesure)
+float asservissementVitesse(float consigne, float mesure)
 {
   // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
   // Entrée : consigne en milimètres
@@ -411,80 +414,24 @@ float asservissementTheta(float consigne, float mesure)
   // Sortie : consigne theta en radian
 
   // Calcul de l'erreur
-  erreur_t = consigne - mesure;
+  erreur_v = consigne - mesure;
 
   // Calcul des termes PID
-  terme_prop_t = kp_t * erreur_t;
-  terme_deriv_t = kd_t * (erreur_t - erreur_precedente_t) / Te;
-  erreur_cumulee_t += ki_t * erreur_t;
+  terme_prop_v = kp_v * erreur_v;
+  terme_deriv_v = kd_v * (erreur_v - erreur_precedente_v) / Te;
+  erreur_cumulee_v += ki_v * erreur_v;
 
   // Calcul de la commande finale
-  commande_t = terme_prop_t + terme_deriv_t + erreur_cumulee_t;
+  commande_v = terme_prop_v + terme_deriv_v + erreur_cumulee_v;
 
   // Limiter la commande pour éviter des valeurs excessives
-  commande_t = constrain(commande_t, -MAX_COMMANDE_THETA, MAX_COMMANDE_THETA);
+  commande_v = constrain(commande_v, -max_commande_v, max_commande_v);
 
   // Mettre à jour l'erreur précédente pour le terme dérivé
-  erreur_precedente_t = erreur_t;
+  erreur_precedente_v = erreur_v;
 
   // Retourner la consigne theta
-  return commande_t;
-}
-
-/*void asservissementPasAPas(float consigne_x, float consigne_y)
-{
-  // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
-
-  // Calcul de l'erreur
-  float erreur_x = encodeur.get_x() - encodeur.x_to_step(consigne_x);
-  float erreur_y = encodeur.get_y() - encodeur.y_to_step(consigne_y);
-
-  // Calcul des termes PID
-  float terme_prop_x = kp_x * erreur_x;
-  float terme_prop_y = kp_y * erreur_y;
-  float terme_deriv_x = kd_x * (erreur_x - erreur_precedente_x);
-  float terme_deriv_y = kd_y * (erreur_y - erreur_precedente_y);
-  erreur_cumulee_x += ki_x * erreur_x;
-  erreur_cumulee_y += ki_y * erreur_y;
-
-  // Calcul de la commande finale
-  float commande_x = terme_prop_x + terme_deriv_x + erreur_cumulee_x;
-  float commande_y = terme_prop_y + terme_deriv_y + erreur_cumulee_y;
-
-  // Limiter la commande pour éviter des valeurs excessives
-  commande_x = constrain(commande_x, -MAX_COMMANDE_X, MAX_COMMANDE_X);
-  commande_y = constrain(commande_y, -MAX_COMMANDE_Y, MAX_COMMANDE_Y);
-
-  // Appliquer la commande aux moteurs du gyropode
-
-  // Mettre à jour l'erreur précédente pour le terme dérivé
-  erreur_precedente_x = erreur_x;
-  erreur_precedente_y = erreur_y;
-}*/
-
-void relevage(float theta)
-{
-  // si theta est positif, on tourne dans le sens horaire
-  // si theta est négatif, on tourne dans le sens anti-horaire
-  if (theta < -0.5)
-  {
-    moteurs.setVitesses(-100, -100);
-    moteurs.updateMoteurs();
-    delay(1000);
-    moteurs.setVitesses(100, 100);
-    moteurs.updateMoteurs();
-    delay(500);
-  }
-  else if (theta < -0.5)
-  {
-    moteurs.setVitesses(100, 100);
-    moteurs.updateMoteurs();
-    delay(1000);
-    moteurs.setVitesses(-100, -100);
-    moteurs.updateMoteurs();
-    delay(500);
-  }
-  debout = true;
+  return commande_v;
 }
 
 void serialEvent()
