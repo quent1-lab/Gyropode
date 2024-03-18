@@ -81,7 +81,7 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_v = -0.01;   // Gain proportionnel
+float kp_v = -0.02;   // Gain proportionnel
 float ki_v = 0.0;   // Gain intégral
 float kd_v = 20.0; // Gain dérivé
 
