@@ -13,7 +13,7 @@ BluetoothSerial SerialBT;
 QueueHandle_t queue;
 QueueHandle_t queueEnvoie;
 
-#define MAX_COMMANDE 100       // Valeur maximale de la commande moteur
+#define MAX_COMMANDE 100 // Valeur maximale de la commande moteur
 
 // ----------------------- Déclaration des variables des moteurs ---------------------
 
@@ -66,7 +66,7 @@ float theta0 = -0.02; // angle d'équilibre
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 500.0; // Gain proportionnel
+float kp = 700.0; // Gain proportionnel
 float ki = 0;     // Gain intégral
 float kd = 60.0;  // Gain dérivé
 
@@ -81,9 +81,9 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_v = -0.02;   // Gain proportionnel
-float ki_v = 0.0;   // Gain intégral
-float kd_v = 20.0; // Gain dérivé
+float kp_v = 0.05; // Gain proportionnel
+float ki_v = 0.0;  // Gain intégral
+float kd_v = 0.1;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_v = 0.0;
@@ -93,6 +93,8 @@ float erreur_precedente_v = 0.0;
 float commande_v = 0.0;
 float erreur_v = 0.0;
 float max_commande_v = 0.5;
+
+float consigne_v = 0.0;
 
 float vitesse = 0.0;
 float vitesse_F = 0.0;
@@ -140,7 +142,7 @@ void controle(void *parameters)
 
     pos_x = 1.0 * (countD + countG) / 2;
 
-    vitesse = (pos_x - pos_x_prec) * 1.0 / Te;
+    vitesse = (-1.0) * (pos_x - pos_x_prec) / Te;
 
     // Ajout d'un filtre passe bas sur la vitesse
 
@@ -148,10 +150,10 @@ void controle(void *parameters)
     vitesse_prec = vitesse_F;
     pos_x_prec = pos_x;
 
-    float theta_consigne = asservissementVitesse(0, vitesse_F);
+    float theta_consigne = asservissementVitesse(consigne_v, vitesse_F);
     asservissementPosition(theta_consigne, thetaFC);
 
-    if (thetaFC > 0.5 || thetaFC < -0.5)
+    if (thetaFC > 0.3 || thetaFC < -0.3)
     {
       moteurs.setVitesses(0, 0);
     }
@@ -239,7 +241,7 @@ void vEnvoieBT(void *pvParameters)
     {
       SerialBT.printf("%s", data);
     }
-    vTaskDelay(5 / portTICK_PERIOD_MS);
+    vTaskDelay(20 / portTICK_PERIOD_MS);
   }
 }
 
@@ -285,7 +287,7 @@ void setup()
   SerialBT.begin("ESP32_Gyro_Q"); // Nom du module bluetooth
   SerialBT.register_callback(callback);
 
-  moteurs.setAlphaFrottement(0.25);
+  moteurs.setAlphaFrottement(0.23);
   // melodie.choisirMelodie(1);
 }
 
@@ -298,7 +300,7 @@ void reception(char ch)
   String valeur;
   int index, length;
 
-  if ((ch == 13) or (ch == 10))
+  if ((ch == 13) or (ch == 10) or (ch == 42))
   {
     index = chaine.indexOf(' ');
     length = chaine.length();
@@ -325,7 +327,7 @@ void reception(char ch)
     {
       ki_v = valeur.toFloat();
     }
-        if (commande == "kp")
+    if (commande == "kp")
     {
       kp = valeur.toFloat();
     }
@@ -351,9 +353,41 @@ void reception(char ch)
       A_v = 1 / (1 + Tau_v / Te);
       B_v = Tau_v / Te;
     }
-    if(commande == "max_c")
+    if (commande == "max_c")
     {
       max_commande_v = valeur.toFloat();
+    }
+    if (commande == "led")
+    {
+      digitalWrite(pinLed, HIGH);
+    }
+    if (commande == "led_off")
+    {
+      digitalWrite(pinLed, LOW);
+    }
+    if (commande == "mel")
+    {
+      melodie.choisirMelodie(1);
+    }
+    if (commande == "co")
+    {
+      valeur += "*";
+      int indexX = valeur.indexOf('X');
+      int indexY = valeur.indexOf('Y');
+      int indexEnd = valeur.indexOf('*');
+
+      if (indexX != -1 && indexY != -1 && indexEnd != -1)
+      {
+        String valeurX = valeur.substring(indexX + 1, indexY);
+        String valeurY = valeur.substring(indexY + 1, indexEnd);
+
+        // Convertir les valeurs en entiers
+        int valX = valeurX.toInt();
+        int valY = valeurY.toInt();
+
+        consigne_v = valY *(-0.01);
+
+      }
     }
 
     chaine = "";
@@ -366,7 +400,7 @@ void reception(char ch)
 
 void loop()
 {
-  if (FlagCalcul == 1)
+  if (FlagCalcul == 2)
   {
     // Allouer de la mémoire pour la chaîne à envoyer
     char *bufferSend = (char *)malloc(100 * sizeof(char));
@@ -375,9 +409,9 @@ void loop()
       // Gérer l'erreur d'allocation de mémoire ici
     }
 
-    sprintf(bufferSend, "%3.4lf %3.4lf %5.1lf %2.4lf \n", erreur_v, terme_prop_v, terme_deriv_v, commande_v);
+    sprintf(bufferSend, "%3.2lf %3.2lf %3.2lf \n", thetaFC, vitesse_F, consigne_v);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
-    //printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
+    // printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
