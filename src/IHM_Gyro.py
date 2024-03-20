@@ -1,92 +1,91 @@
 import tkinter as tk
-import tkinter.ttk as ttk
-import bluetooth
-import threading
-
-# Fonction pour envoyer des données via Bluetooth
-def send_data():
-    nom = nom_entry.get()
-    val1 = val1_slider.get()
-    val2 = val2_slider.get()
-    val3 = val3_slider.get()
-    message = f"({nom} {val1} {val2} {val3})"
-    print("Envoi:", message)
-    # Code pour envoyer le message via Bluetooth
-    # Remplacer cette partie par votre propre logique d'envoi Bluetooth
-
-# Fonction pour recevoir des données via Bluetooth
-def receive_data():
-    target_name = "Gyro_Q"
-    target_address = None
-
-    nearby_devices = bluetooth.discover_devices()
-
-    for bdaddr in nearby_devices:
-        if target_name == bluetooth.lookup_name(bdaddr):
-            target_address = bdaddr
-            break
-
-    if target_address is not None:
-        print(f"found target bluetooth device with address {target_address}")
-        client_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        client_socket.connect((target_address, 1))  # The second parameter is the port number
-    else:
-        print("could not find target bluetooth device nearby")
-
-    while True:
-        data = client_socket.recv(1024)
-        if data:
-            message = data.decode()
-            print("Reçu:", message)
-            # Code pour décoder le message et faire quelque chose avec les valeurs
-            # Remplacer cette partie par votre propre logique de traitement des données
-
-# Fonction appelée lorsqu'une touche directionnelle est pressée
-def on_key(event):
-    key = event.keysym
-    print("Touche pressée:", key)
-    # Code pour traiter les touches directionnelles
-    # Remplacer cette partie par votre propre logique de traitement des touches
+from tkinter import ttk
+import pygatt
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 # Création de la fenêtre principale
 root = tk.Tk()
-root.title("Contrôle du Gyropode")
+root.title("Contrôle Bluetooth")
 
-# Cadre pour les sliders
-frame = ttk.Frame(root)
-frame.pack(padx=10, pady=10)
+# Création d'une figure pour le graphique
+fig, ax = plt.subplots()
+ax.set_xlabel('Temps (s)')
+ax.set_ylabel('Valeurs')
+line, = ax.plot([], [], 'r-', animated=True)
 
-# Labels et sliders pour les valeurs
-nom_label = ttk.Label(frame, text="Nom:")
-nom_label.grid(row=0, column=0, padx=5, pady=5)
-nom_entry = ttk.Entry(frame)
-nom_entry.grid(row=0, column=1, padx=5, pady=5)
+# Fonction d'animation pour le graphique
+def animate(i):
+    line.set_data(x_data, y_data)
 
-val1_label = ttk.Label(frame, text="Val1:")
-val1_label.grid(row=1, column=0, padx=5, pady=5)
-val1_slider = ttk.Scale(frame, from_=0, to=100, orient="horizontal")
-val1_slider.grid(row=1, column=1, padx=5, pady=5)
+# Initialisation des données du graphique
+x_data, y_data = [], []
 
-val2_label = ttk.Label(frame, text="Val2:")
-val2_label.grid(row=2, column=0, padx=5, pady=5)
-val2_slider = ttk.Scale(frame, from_=0, to=100, orient="horizontal")
-val2_slider.grid(row=2, column=1, padx=5, pady=5)
+# Fonction pour recevoir les données Bluetooth et les traiter
+def receive_data(data):
+    try:
+        # Décodage des données
+        decoded_data = data.decode("utf-8")
+        parts = decoded_data.strip()[1:-1].split()
+        nom = parts[0]
+        vals = list(map(float, parts[1:]))
 
-val3_label = ttk.Label(frame, text="Val3:")
-val3_label.grid(row=3, column=0, padx=5, pady=5)
-val3_slider = ttk.Scale(frame, from_=0, to=100, orient="horizontal")
-val3_slider.grid(row=3, column=1, padx=5, pady=5)
+        # Affichage des données
+        print("Nom:", nom)
+        print("Valeurs:", vals)
 
-# Bouton d'envoi
-send_button = ttk.Button(root, text="Envoyer", command=send_data)
-send_button.pack(pady=5)
+        # Mise à jour du graphique
+        x_data.append(len(x_data) + 1)
+        for i in range(len(vals)):
+            if len(y_data) <= i:
+                y_data.append([])
+            y_data[i].append(vals[i])
 
-# Démarrer le thread pour la réception de données Bluetooth
-receive_thread = threading.Thread(target=receive_data)
-receive_thread.start()
+        # Tracé du graphique
+        ax.relim()
+        ax.autoscale_view()
 
-# Associer la fonction on_key à l'événement des touches directionnelles
-root.bind("<KeyPress>", on_key)
+    except Exception as e:
+        print("Erreur lors du traitement des données:", e)
 
-# Lancement de la boucle principale
+# Création d'un widget pour afficher les données reçues
+data_label = tk.Label(root, text="Données reçues:")
+data_label.pack()
+
+# Connexion Bluetooth
+try:
+    adapter = pygatt.GATTToolBackend()
+    adapter.start()
+    device = adapter.connect('10:97:BD:D3:1F:82')
+except Exception as e:
+    print("Erreur lors de la connexion Bluetooth:", e)
+
+# Création de sliders pour envoyer des valeurs
+send_label = tk.Label(root, text="Envoyer des valeurs:")
+send_label.pack()
+
+sliders = []
+for i in range(3):  # Nombre de valeurs à envoyer
+    slider = tk.Scale(root, from_=0, to=100, orient="horizontal")
+    slider.pack()
+    sliders.append(slider)
+
+# Fonction pour envoyer les valeurs via Bluetooth
+def send_values():
+    try:
+        values = [slider.get() for slider in sliders]
+        message = f"(my_robot {' '.join(map(str, values))})"
+        device.char_write("0000ffe1-0000-1000-8000-00805f9b34fb", bytearray(message, "utf-8"))
+        print("Données envoyées:", values)
+    except Exception as e:
+        print("Erreur lors de l'envoi des données:", e)
+
+# Bouton pour envoyer les valeurs
+send_button = tk.Button(root, text="Envoyer", command=send_values)
+send_button.pack()
+
+# Démarrage de l'animation du graphique
+ani = FuncAnimation(fig, animate, interval=1000)
+
+# Démarrage de la boucle principale
 root.mainloop()

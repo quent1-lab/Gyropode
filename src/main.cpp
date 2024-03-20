@@ -61,7 +61,7 @@ float thetaG, thetaR;
 // angle filtre
 float thetaGF, thetaRF, thetaFC;
 
-float theta0 = -0.01; // angle d'équilibre
+float theta0 = -0.02; // angle d'équilibre
 
 // ----------------------- Déclaration des variables PID -----------------------
 
@@ -150,6 +150,11 @@ void controle(void *parameters)
 
     float theta_consigne = asservissementVitesse(0, vitesse_F);
     asservissementPosition(theta_consigne, thetaFC);
+
+    if (thetaFC > 0.5 || thetaFC < -0.5)
+    {
+      moteurs.setVitesses(0, 0);
+    }
 
     moteurs.updateMoteurs();
     FlagCalcul = 1;
@@ -363,20 +368,20 @@ void loop()
 {
   if (FlagCalcul == 1)
   {
-    /*// Allouer de la mémoire pour la chaîne à envoyer
+    // Allouer de la mémoire pour la chaîne à envoyer
     char *bufferSend = (char *)malloc(100 * sizeof(char));
     if (bufferSend == NULL)
     {
       // Gérer l'erreur d'allocation de mémoire ici
     }
 
-    sprintf(bufferSend, "theta %3.1lf %5.1lf %5.1lf %5.1lf \n", erreur_v, terme_prop_v, terme_deriv_v, commande_v);
-    xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);*/
-    printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
+    sprintf(bufferSend, "%3.4lf %3.4lf %5.1lf %2.4lf \n", erreur_v, terme_prop_v, terme_deriv_v, commande_v);
+    xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
+    //printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
-    // free(bufferSend);
+    free(bufferSend);
   }
 
   // Calcul de la tension de la batterie
