@@ -216,7 +216,7 @@ void vReceptionBT(void *pvParameters)
     {
       int bytesRead = SerialBT.readBytes(buffer, data);
       buffer[bytesRead] = '\0'; // Assurez-vous que la chaîne est terminée par un caractère nul
-      Serial.printf("Données reçues : %s", buffer);
+      //Serial.printf("Données reçues : %s", buffer);
       for (int i = 0; i < bytesRead; i++)
       {
         reception(buffer[i]);
@@ -318,10 +318,12 @@ void reception(char ch)
     if (commande == "kp_v")
     {
       kp_v = valeur.toFloat();
+      kp_v /= 1000.0;
     }
     if (commande == "kd_v")
     {
       kd_v = valeur.toFloat();
+      kd_v /= 1000.0;
     }
     if (commande == "ki_v")
     {
@@ -385,7 +387,7 @@ void reception(char ch)
         int valX = valeurX.toInt();
         int valY = valeurY.toInt();
 
-        consigne_v = valY *(-0.01);
+        consigne_v = valY *(0.01);
 
       }
     }
