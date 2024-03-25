@@ -50,7 +50,7 @@ bool mpu_ok = true;
 char FlagCalcul = 0;
 float Te = 10;   // période d'échantillonage en ms
 float Tau = 250; // constante de temps du filtre en ms
-float Tau_v = 30;
+float Tau_v = 80;
 
 // coefficient du filtre
 float A, B, A_v, B_v;
@@ -61,14 +61,14 @@ float thetaG, thetaR;
 // angle filtre
 float thetaGF, thetaRF, thetaFC;
 
-float theta0 = -0.02; // angle d'équilibre
+float theta0 = 0; // angle d'équilibre
 
 // ----------------------- Déclaration des variables PID -----------------------
 
 // Constantes du régulateur PID
-float kp = 700.0; // Gain proportionnel
-float ki = 0;     // Gain intégral
-float kd = 60.0;  // Gain dérivé
+float kp = 850.0; // Gain proportionnel
+float ki = 0.0;
+float kd = 95.0;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop = 0.0;
@@ -81,9 +81,9 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_v = 0.05; // Gain proportionnel
-float ki_v = 0.0;  // Gain intégral
-float kd_v = 0.1;  // Gain dérivé
+float kp_v = 0.155; // Gain proportionnel
+float ki_v = 0.00000022;  // Gain intégral
+float kd_v = 0.0;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_v = 0.0;
@@ -142,7 +142,7 @@ void controle(void *parameters)
 
     pos_x = 1.0 * (countD + countG) / 2;
 
-    vitesse = (-1.0) * (pos_x - pos_x_prec) / Te;
+    vitesse = (-1.0) * (pos_x - pos_x_prec) * 1000.0 / Te;
 
     // Ajout d'un filtre passe bas sur la vitesse
 
@@ -150,12 +150,14 @@ void controle(void *parameters)
     vitesse_prec = vitesse_F;
     pos_x_prec = pos_x;
 
-    float theta_consigne = asservissementVitesse(consigne_v, vitesse_F);
-    asservissementPosition(theta_consigne, thetaFC);
-
-    if (thetaFC > 0.3 || thetaFC < -0.3)
+    if (thetaFC > 0.4 || thetaFC < -0.4)
     {
       moteurs.setVitesses(0, 0);
+    }
+    else
+    {
+      float theta_consigne = asservissementVitesse(consigne_v, vitesse_F);
+      asservissementPosition(theta_consigne, thetaFC);
     }
 
     moteurs.updateMoteurs();
@@ -216,7 +218,7 @@ void vReceptionBT(void *pvParameters)
     {
       int bytesRead = SerialBT.readBytes(buffer, data);
       buffer[bytesRead] = '\0'; // Assurez-vous que la chaîne est terminée par un caractère nul
-      //Serial.printf("Données reçues : %s", buffer);
+      // Serial.printf("Données reçues : %s", buffer);
       for (int i = 0; i < bytesRead; i++)
       {
         reception(buffer[i]);
@@ -287,7 +289,7 @@ void setup()
   SerialBT.begin("ESP32_Gyro_Q"); // Nom du module bluetooth
   SerialBT.register_callback(callback);
 
-  moteurs.setAlphaFrottement(0.23);
+  moteurs.setAlphaFrottement(0.1);
   // melodie.choisirMelodie(1);
 }
 
@@ -387,8 +389,7 @@ void reception(char ch)
         int valX = valeurX.toInt();
         int valY = valeurY.toInt();
 
-        consigne_v = valY *(0.01);
-
+        consigne_v = valY * (0.01);
       }
     }
 
@@ -402,9 +403,9 @@ void reception(char ch)
 
 void loop()
 {
-  if (FlagCalcul == 2)
+  if (FlagCalcul == 1)
   {
-    // Allouer de la mémoire pour la chaîne à envoyer
+    /*// Allouer de la mémoire pour la chaîne à envoyer
     char *bufferSend = (char *)malloc(100 * sizeof(char));
     if (bufferSend == NULL)
     {
@@ -413,11 +414,13 @@ void loop()
 
     sprintf(bufferSend, "%3.2lf %3.2lf %3.2lf \n", thetaFC, vitesse_F, consigne_v);
     xQueueSend(queueEnvoie, &bufferSend, portMAX_DELAY);
-    // printf("%3.4lf %3.4lf %5.1lf %2.4lf \n", vitesse, vitesse_F, pos_x, commande_v);
+
     FlagCalcul = 0;
 
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
-    free(bufferSend);
+    free(bufferSend);*/
+
+    printf("%3.4lf %3.4lf %5.1lf %1.6lf \n", vitesse, vitesse_F, commande, commande_v);
   }
 
   // Calcul de la tension de la batterie
@@ -441,11 +444,10 @@ void asservissementPosition(float consigne, float mesure)
 
   // Calcul des termes PID
   terme_prop = kp * erreur;
-  erreur_cumulee += ki * erreur;
-  terme_deriv = kd * (-mesure);
+  terme_deriv = kd * (-thetaR);
 
   // Calcul de la commande finale
-  commande = terme_prop + terme_deriv + erreur_cumulee;
+  commande = terme_prop + terme_deriv;
 
   // Limiter la commande pour éviter des valeurs excessives
   commande = constrain(commande, -MAX_COMMANDE, MAX_COMMANDE);
@@ -470,7 +472,7 @@ float asservissementVitesse(float consigne, float mesure)
 
   // Calcul des termes PID
   terme_prop_v = kp_v * erreur_v;
-  terme_deriv_v = kd_v * (erreur_v - erreur_precedente_v) / Te;
+  terme_deriv_v = kd_v * (erreur_v - erreur_precedente_v) * 1000.0 / Te;
   erreur_cumulee_v += ki_v * erreur_v;
 
   // Calcul de la commande finale
