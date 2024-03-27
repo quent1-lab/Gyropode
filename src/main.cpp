@@ -82,7 +82,7 @@ float erreur = 0.0;
 
 // Constantes du régulateur PID
 float kp_v = 0.0002; // Gain proportionnel
-float ki_v = 0.0000004;  // Gain intégral
+float ki_v = 0.000001;  // Gain intégral
 float kd_v = 0.0;  // Gain dérivé
 
 // Variables globales pour le PID
@@ -102,10 +102,18 @@ float vitesse_prec = 0.0;
 float pos_x = 0;
 float pos_x_prec = 0.0;
 
+float kp_d = 0.002;
+float rayon_estime = 0.0;
+int rayon_consigne = 0;
+float dir = 0.0;
+int countD_prec = 0;
+int countG_prec = 0;
+
 // ----------------------- Déclaration des fonctions -----------------------
 
 void asservissementAngulaire(float consigne, float mesure);
 float asservissementVitesse(float consigne, float mesure);
+void asservissementEnDirection(int consigne, float mesure);
 void reception(char ch);
 
 // --------------------- Fonction de calcul des angles ---------------------
@@ -149,6 +157,12 @@ void controle(void *parameters)
     vitesse_F = A_v * (vitesse + B_v * vitesse_prec);
     vitesse_prec = vitesse_F;
     pos_x_prec = pos_x;
+
+    float Lg = countG - countG_prec;
+    float Ld = countD - countD_prec;
+    rayon_estime = (Lg + Ld) / (Lg - Ld) * 280.0 * 0.5;
+    countD_prec = countD;
+    countG_prec = countG;
 
     if (thetaFC > 0.4 || thetaFC < -0.4)
     {
@@ -289,7 +303,7 @@ void setup()
   SerialBT.begin("ESP32_Gyro_Q"); // Nom du module bluetooth
   SerialBT.register_callback(callback);
 
-  moteurs.setAlphaFrottement(0.1);
+  moteurs.setAlphaFrottement(0.2);
   // melodie.choisirMelodie(1);
 }
 
@@ -361,6 +375,10 @@ void reception(char ch)
     {
       max_commande_v = valeur.toFloat();
     }
+    if (commande == "kp_d")
+    {
+      kp_d = valeur.toFloat();
+    }
     if (commande == "led")
     {
       digitalWrite(pinLed, HIGH);
@@ -389,8 +407,9 @@ void reception(char ch)
         int valX = valeurX.toInt();
         int valY = valeurY.toInt();
 
-        consigne_v = valY * (0.01);
-        Serial.println(consigne_v);
+        consigne_v = valY;
+        rayon_consigne = valX;
+        //Serial.println(consigne_v);
       }
     }
 
@@ -429,12 +448,15 @@ void loop()
   if(tension < 6.9)
   {
     digitalWrite(pinLed, HIGH);
-    melodie.choisirMelodie(1);
+    //melodie.choisirMelodie(1);
   }
   else
   {
     digitalWrite(pinLed, LOW);
   }
+
+  //asservissementEnDirection(rayon_consigne, rayon_estime);
+
 }
 
 // Fonction de régulation PID en position
@@ -491,7 +513,7 @@ float asservissementVitesse(float consigne, float mesure)
   return commande_v;
 }
 
-float asservissementEnDirection(float consigne, float mesure)
+void asservissementEnDirection(int consigne, float mesure)
 {
   // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
   // Entrée : consigne en milimètres
@@ -500,10 +522,11 @@ float asservissementEnDirection(float consigne, float mesure)
 
   // Calcul de l'erreur
   float erreur_d = consigne - mesure; // Consigne : Rayon de courbure en mm (positif à droite, négatif à gauche) ; mesure : Rayon de courbure observer en mm
+  float terme_prop_d = kp_d * erreur_d;
 
-
-  // Retourner la consigne theta
-  return commande_v;
+  // Calcul de la commande finale
+  dir = terme_prop_d;
+  moteurs.setDir(dir);
 }
 
 void serialEvent()

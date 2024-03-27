@@ -10,6 +10,7 @@ public:
     void setVitesses(int vitesseMoteur1, int vitesseMoteur2);
     void updateMoteurs();
     void setAlphaFrottement(float alphaFrottement);
+    void setDir(float dir);
 
 private:
     int IN1, IN2, IN3, IN4;
@@ -17,6 +18,7 @@ private:
     int resoltion;
     int vitesseMoteur1, vitesseMoteur2;
     float alphaFrottement;
+    float dir;
 };
 
 #endif

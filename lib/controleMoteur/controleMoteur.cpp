@@ -9,6 +9,8 @@ ControleMoteur::ControleMoteur(int in1, int in2, int in3, int in4)
 
     frequence = 20000;
     resoltion = 8;
+    alphaFrottement = 0.1;
+    dir = 0;
 
     pinMode(IN1, OUTPUT);
     pinMode(IN2, OUTPUT);
@@ -35,26 +37,34 @@ void ControleMoteur::setVitesses(int vitesseMoteur1, int vitesseMoteur2)
 
 void ControleMoteur::updateMoteurs()
 {
-    int pwm1 = map(abs(vitesseMoteur1), 0, 100, (127 + (255*alphaFrottement)), 250); // Conversion de la vitesse en PWM (valeur à afiner)
-    int pwm2 = map(abs(vitesseMoteur2), 0, 100, (127 + (255*alphaFrottement)), 250); // Conversion de la vitesse en PWM (valeur à afiner)
+    // Conversion de la vitesse des moteurs en commande unipolaire
+    vitesseMoteur1 = map(vitesseMoteur1, -100, 100, -45, 45);
+    vitesseMoteur2 = map(vitesseMoteur2, -100, 100, -45, 45);
 
-    if (vitesseMoteur1 <= 3 && vitesseMoteur1 >= -3)
-    {
-        pwm1 = 127;
-    }
-    if (vitesseMoteur2 <= 3 && vitesseMoteur2 >= -3)
-    {
-        pwm2 = 127;
-    }
+    // Correction de la vitesse des moteurs en fonction du frottement
+    float vitMotD_corrige = vitesseMoteur1 / 100.0 * (1.0 + alphaFrottement);
+    float vitMotG_corrige = vitesseMoteur2 / 100.0 * (1.0 + alphaFrottement);
+
+    float pwmD1 = 255 * (0.5 - vitMotD_corrige + dir);
+    float pwmD2 = 255 * (0.5 + vitMotD_corrige - dir);
+    float pwmG1 = 255 * (0.5 + vitMotG_corrige - dir);
+    float pwmG2 = 255 * (0.5 - vitMotG_corrige + dir);
+
+    Serial.printf("pwmD1: %f, pwmD2: %f, pwmG1: %f, pwmG2: %f\n", pwmD1, pwmD2, pwmG1, pwmG2);
 
     //Commande unipolaire des moteurs en PWM
-    ledcWrite(2, -vitesseMoteur1 > 0 ? pwm1 : 255-pwm1);
-    ledcWrite(3, -vitesseMoteur1 < 0 ? pwm1 : 255-pwm1);
-    ledcWrite(4, vitesseMoteur2 > 0 ? pwm2 : 255-pwm2);
-    ledcWrite(5, vitesseMoteur2 < 0 ? pwm2 : 255-pwm2);
+    ledcWrite(2, pwmD1);
+    ledcWrite(3, pwmD2);
+    ledcWrite(4, pwmG1);
+    ledcWrite(5, pwmG2);
 }
 
 void ControleMoteur::setAlphaFrottement(float alphaFrottement)
 {
     this->alphaFrottement = constrain(alphaFrottement, 0, 1);
+}
+
+void ControleMoteur::setDir(float dir)
+{
+    this->dir = constrain(dir, -127, 127);
 }
