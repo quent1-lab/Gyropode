@@ -56,10 +56,10 @@ float Tau_v = 80;
 float A, B, A_v, B_v;
 
 // angle projeté et gyro
-float thetaG, thetaR;
+float thetaG, thetaOmegaR;
 
 // angle filtre
-float thetaGF, thetaRF, thetaFC;
+float thetaGF, thetaOmegaRF, thetaFC;
 
 float theta0 = 0; // angle d'équilibre
 
@@ -81,8 +81,8 @@ float erreur = 0.0;
 // ----------------------- Déclaration des variables PID pour l'angle -----------------------
 
 // Constantes du régulateur PID
-float kp_v = 0.155; // Gain proportionnel
-float ki_v = 0.00000022;  // Gain intégral
+float kp_v = 0.0002; // Gain proportionnel
+float ki_v = 0.0000004;  // Gain intégral
 float kd_v = 0.0;  // Gain dérivé
 
 // Variables globales pour le PID
@@ -104,7 +104,7 @@ float pos_x_prec = 0.0;
 
 // ----------------------- Déclaration des fonctions -----------------------
 
-void asservissementPosition(float consigne, float mesure);
+void asservissementAngulaire(float consigne, float mesure);
 float asservissementVitesse(float consigne, float mesure);
 void reception(char ch);
 
@@ -124,15 +124,15 @@ void controle(void *parameters)
 
       // Calcul des angles
       thetaG = atan2(a.acceleration.y, a.acceleration.x); // Angle projeté
-      thetaR = -g.gyro.z * Tau / 1000;
+      thetaOmegaR = -g.gyro.z * Tau / 1000;
 
       // Appliquer le filtre passe-bas
       thetaGF = A * (thetaG + B * thetaGF);
       // Appliquer le filtre passe-haut sur l'angle gyro
-      thetaRF = A * (thetaR + B * thetaRF);
+      thetaOmegaRF = A * (thetaOmegaR + B * thetaOmegaRF);
 
       // Filtre complémentaire
-      thetaFC = thetaGF + thetaRF;
+      thetaFC = thetaGF + thetaOmegaRF;
     }
 
     countD = encodeur.get_countD();
@@ -157,7 +157,7 @@ void controle(void *parameters)
     else
     {
       float theta_consigne = asservissementVitesse(consigne_v, vitesse_F);
-      asservissementPosition(theta_consigne, thetaFC);
+      asservissementAngulaire(theta_consigne, thetaFC);
     }
 
     moteurs.updateMoteurs();
@@ -390,6 +390,7 @@ void reception(char ch)
         int valY = valeurY.toInt();
 
         consigne_v = valY * (0.01);
+        Serial.println(consigne_v);
       }
     }
 
@@ -420,31 +421,31 @@ void loop()
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
     free(bufferSend);*/
 
-    printf("%3.4lf %3.4lf %5.1lf %1.6lf \n", vitesse, vitesse_F, commande, commande_v);
+    //printf("%3.5lf %3.5lf %5.6lf %1.6lf \n", vitesse_F, terme_prop_v, erreur_cumulee_v, commande_v);
   }
 
   // Calcul de la tension de la batterie
-  /*float tension = analogRead(pinBatterie) * (7.2 / 4095.0);
-  Serial.println(tension);
-  if(tension < 6.5)
+  float tension = analogRead(pinBatterie) * (7.2 / 4095.0);
+  if(tension < 6.9)
   {
     digitalWrite(pinLed, HIGH);
+    melodie.choisirMelodie(1);
   }
   else
   {
     digitalWrite(pinLed, LOW);
-  }*/
+  }
 }
 
 // Fonction de régulation PID en position
-void asservissementPosition(float consigne, float mesure)
+void asservissementAngulaire(float consigne, float mesure)
 {
   // Calcul de l'erreur
   erreur = (consigne + theta0) - mesure;
 
   // Calcul des termes PID
   terme_prop = kp * erreur;
-  terme_deriv = kd * (-thetaR);
+  terme_deriv = kd * (-thetaOmegaR);
 
   // Calcul de la commande finale
   commande = terme_prop + terme_deriv;
@@ -475,6 +476,8 @@ float asservissementVitesse(float consigne, float mesure)
   terme_deriv_v = kd_v * (erreur_v - erreur_precedente_v) * 1000.0 / Te;
   erreur_cumulee_v += ki_v * erreur_v;
 
+  erreur_cumulee_v = constrain(erreur_cumulee_v, -0.1, 0.1);
+
   // Calcul de la commande finale
   commande_v = terme_prop_v + terme_deriv_v + erreur_cumulee_v;
 
@@ -483,6 +486,21 @@ float asservissementVitesse(float consigne, float mesure)
 
   // Mettre à jour l'erreur précédente pour le terme dérivé
   erreur_precedente_v = erreur_v;
+
+  // Retourner la consigne theta
+  return commande_v;
+}
+
+float asservissementEnDirection(float consigne, float mesure)
+{
+  // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
+  // Entrée : consigne en milimètres
+  // Entrée : mesure en milimètres
+  // Sortie : consigne theta en radian
+
+  // Calcul de l'erreur
+  float erreur_d = consigne - mesure; // Consigne : Rayon de courbure en mm (positif à droite, négatif à gauche) ; mesure : Rayon de courbure observer en mm
+
 
   // Retourner la consigne theta
   return commande_v;
