@@ -47,6 +47,8 @@ Adafruit_MPU6050 mpu;
 sensors_event_t a, g, temp;
 bool mpu_ok = true;
 
+bool tension_ok = true;
+
 char FlagCalcul = 0;
 float Te = 10;   // période d'échantillonage en ms
 float Tau = 250; // constante de temps du filtre en ms
@@ -164,7 +166,7 @@ void controle(void *parameters)
     countD_prec = countD;
     countG_prec = countG;
 
-    if (thetaFC > 0.4 || thetaFC < -0.4)
+    if (thetaFC > 0.4 || thetaFC < -0.4 || tension_ok == false)
     {
       moteurs.setVitesses(0, 0);
     }
@@ -448,6 +450,7 @@ void loop()
   if(tension < 6.9)
   {
     digitalWrite(pinLed, HIGH);
+    tension_ok = false;
     //melodie.choisirMelodie(1);
   }
   else
@@ -455,7 +458,7 @@ void loop()
     digitalWrite(pinLed, LOW);
   }
 
-  //asservissementEnDirection(rayon_consigne, rayon_estime);
+  // asservissementEnDirection(rayon_consigne, rayon_estime);
 
 }
 
