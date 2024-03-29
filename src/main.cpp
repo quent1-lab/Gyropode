@@ -162,7 +162,7 @@ void controle(void *parameters)
 
     float Lg = countG - countG_prec;
     float Ld = countD - countD_prec;
-    rayon_estime = (Lg + Ld) / (Lg - Ld) * 280.0 * 0.5;
+    rayon_estime = ((Lg + Ld) * 280.0)/ (Lg - Ld) / 2.0 ;
     countD_prec = countD;
     countG_prec = countG;
 
