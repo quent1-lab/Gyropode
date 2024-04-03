@@ -18,7 +18,6 @@ int melodie_StarWars[] = {
   NOTE_A4, NOTE_G4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_G4, NOTE_A4,
   NOTE_A5, NOTE_A4, NOTE_A4, NOTE_A5, NOTE_G5, NOTE_F5, NOTE_E5, NOTE_D5, NOTE_AS5, NOTE_A5, NOTE_G5, NOTE_F5, NOTE_E5, NOTE_D5, NOTE_AS5,
   NOTE_A5, NOTE_G5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_G5, NOTE_A5,
-  REST, REST, REST
 };
 
 // Durées des notes de la mélodie de Star Wars
@@ -30,9 +29,8 @@ int duree_StarWars[] = {
   500, 250, 1000, 500, 325, 150, 250, 250, 500, 250, 1000, 500, 500, 500, 500,
   350, 150, 500, 250, 325, 150, 250, 250, 500, 250, 1000, 500, 325, 150, 250, 250,
   500, 250, 1000, 500, 500, 500, 500, 350, 150, 500, 150, 1000, 500, 500, 500, 500,
-  350, 150, 500, 150, 1000, 500, 500, 500, 500, 350, 150, 500, 150, 1000, 500, 500,
-  1, 1, 1
+  350, 150, 500, 150, 1000, 500, 500, 500, 500, 350, 150, 500, 150, 1000, 500, 500
 };
 
 // Taille de la mélodie de Star Wars
-int taille_StarWars = 110;
+int taille_StarWars = 113;

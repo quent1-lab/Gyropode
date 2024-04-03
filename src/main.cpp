@@ -84,8 +84,8 @@ float erreur = 0.0;
 
 // Constantes du régulateur PID
 float kp_v = 0.0002; // Gain proportionnel
-float ki_v = 0.000001;  // Gain intégral
-float kd_v = 0.0;  // Gain dérivé
+float ki_v = 0.000002;  // Gain intégral
+float kd_v = 0.00000;  // Gain dérivé
 
 // Variables globales pour le PID
 float terme_prop_v = 0.0;
@@ -104,10 +104,14 @@ float vitesse_prec = 0.0;
 float pos_x = 0;
 float pos_x_prec = 0.0;
 
-float kp_d = 0.002;
+float kp_d = 0.0001;
+float ki_d = 0.0000001;
+float terme_prop_d = 0.0;
+float erreur_cumulee_d = 0.0;
+float erreur_d = 0.0;
 float rayon_estime = 0.0;
-int rayon_consigne = 0;
-float dir = 0.0;
+float rayon_consigne = 0.0;
+float direction = 0.0;
 int countD_prec = 0;
 int countG_prec = 0;
 
@@ -115,7 +119,7 @@ int countG_prec = 0;
 
 void asservissementAngulaire(float consigne, float mesure);
 float asservissementVitesse(float consigne, float mesure);
-void asservissementEnDirection(int consigne, float mesure);
+void asservissementEnDirection(float consigne, float mesure);
 void reception(char ch);
 
 // --------------------- Fonction de calcul des angles ---------------------
@@ -162,7 +166,11 @@ void controle(void *parameters)
 
     float Lg = countG - countG_prec;
     float Ld = countD - countD_prec;
-    rayon_estime = ((Lg + Ld) * 280.0)/ (Lg - Ld) / 2.0 ;
+    if (Lg + Ld != 0) {
+        rayon_estime = ((Lg - Ld) * 2.0) / (Lg + Ld) / 255.0;
+    } else {
+        rayon_estime = 0.0;
+    }
     countD_prec = countD;
     countG_prec = countG;
 
@@ -305,8 +313,8 @@ void setup()
   SerialBT.begin("ESP32_Gyro_Q"); // Nom du module bluetooth
   SerialBT.register_callback(callback);
 
-  moteurs.setAlphaFrottement(0.2);
-  // melodie.choisirMelodie(1);
+  moteurs.setAlphaFrottement(0.15);
+  melodie.choisirMelodie(2);
 }
 
 void reception(char ch)
@@ -442,7 +450,7 @@ void loop()
     // N'oubliez pas de libérer la mémoire une fois que vous avez fini de l'utiliser
     free(bufferSend);*/
 
-    //printf("%3.5lf %3.5lf %5.6lf %1.6lf \n", vitesse_F, terme_prop_v, erreur_cumulee_v, commande_v);
+    //printf("%3.5lf %3.5lf %5.6lf %1.6lf \n", vitesse_F, terme_prop_v, direction, commande_v);
   }
 
   // Calcul de la tension de la batterie
@@ -458,7 +466,7 @@ void loop()
     digitalWrite(pinLed, LOW);
   }
 
-  // asservissementEnDirection(rayon_consigne, rayon_estime);
+  asservissementEnDirection(rayon_consigne, rayon_estime);
 
 }
 
@@ -516,7 +524,7 @@ float asservissementVitesse(float consigne, float mesure)
   return commande_v;
 }
 
-void asservissementEnDirection(int consigne, float mesure)
+void asservissementEnDirection(float consigne, float mesure)
 {
   // Boucle d'asservissement en pas à pas pour le calcul de la consigne de la boucle en position
   // Entrée : consigne en milimètres
@@ -524,12 +532,12 @@ void asservissementEnDirection(int consigne, float mesure)
   // Sortie : consigne theta en radian
 
   // Calcul de l'erreur
-  float erreur_d = consigne - mesure; // Consigne : Rayon de courbure en mm (positif à droite, négatif à gauche) ; mesure : Rayon de courbure observer en mm
-  float terme_prop_d = kp_d * erreur_d;
+  erreur_d = consigne - mesure; // Consigne : Rayon de courbure en mm (positif à droite, négatif à gauche) ; mesure : Rayon de courbure observer en mm
+  terme_prop_d = kp_d * erreur_d;
 
   // Calcul de la commande finale
-  dir = terme_prop_d;
-  moteurs.setDir(dir);
+  direction = terme_prop_d;
+  moteurs.setDir(direction);
 }
 
 void serialEvent()

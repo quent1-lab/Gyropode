@@ -45,12 +45,22 @@ void ControleMoteur::updateMoteurs()
     float vitMotD_corrige = vitesseMoteur1 / 100.0 * (1.0 + alphaFrottement);
     float vitMotG_corrige = vitesseMoteur2 / 100.0 * (1.0 + alphaFrottement);
 
-    float pwmD1 = 255 * (0.5 - vitMotD_corrige - dir);
-    float pwmD2 = 255 * (0.5 + vitMotD_corrige + dir);
+    // Saturation des commandes unipolaires
+    vitMotD_corrige = constrain(vitMotD_corrige, -0.45, 0.45);
+    vitMotG_corrige = constrain(vitMotG_corrige, -0.45, 0.45);
+
+    float pwmD1 = 255 * (0.5 - vitMotD_corrige + dir);
+    float pwmD2 = 255 * (0.5 + vitMotD_corrige - dir);
     float pwmG1 = 255 * (0.5 + vitMotG_corrige + dir);
     float pwmG2 = 255 * (0.5 - vitMotG_corrige - dir);
 
     //Serial.printf("pwmD1: %f, pwmD2: %f, pwmG1: %f, pwmG2: %f\n", pwmD1, pwmD2, pwmG1, pwmG2);
+
+    // Saturation des commandes PWM
+    pwmD1 = constrain(pwmD1, 0, 250);
+    pwmD2 = constrain(pwmD2, 0, 250);
+    pwmG1 = constrain(pwmG1, 0, 250);
+    pwmG2 = constrain(pwmG2, 0, 250);
 
     //Commande unipolaire des moteurs en PWM
     ledcWrite(2, pwmD1);
@@ -67,4 +77,5 @@ void ControleMoteur::setAlphaFrottement(float alphaFrottement)
 void ControleMoteur::setDir(float dir)
 {
     this->dir = constrain(dir, -0.2, 0.2);
+    Serial.printf("%1.7f\n", this->dir);
 }
