@@ -314,7 +314,7 @@ void setup()
   SerialBT.register_callback(callback);
 
   moteurs.setAlphaFrottement(0.15);
-  melodie.choisirMelodie(2);
+  //melodie.choisirMelodie(2);
 }
 
 void reception(char ch)
@@ -399,7 +399,7 @@ void reception(char ch)
     }
     if (commande == "mel")
     {
-      melodie.choisirMelodie(1);
+      melodie.choisirMelodie(valeur.toInt());
     }
     if (commande == "co")
     {

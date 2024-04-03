@@ -1,3 +1,6 @@
+#ifndef MELODIE_STARWARS_H
+#define MELODIE_STARWARS_H
+
 #include "pitches.h"
 
 // Melodie de Star Wars
@@ -34,3 +37,5 @@ int duree_StarWars[] = {
 
 // Taille de la mélodie de Star Wars
 int taille_StarWars = 113;
+
+#endif // MELODIE_STARWARS_H
